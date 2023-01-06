@@ -21,7 +21,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pBlackboard = new Elite::Blackboard();
 	m_pBlackboard->AddData("AgentInfo", m_pInterface->Agent_GetInfo());
 
-	
+	//Test
 }
 
 //Called only once
