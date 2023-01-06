@@ -23,8 +23,8 @@ namespace  BT_Actions
 			return Elite::BehaviorState::Failure;
 		if (!pBlackboard->GetData("Target", targetPos))
 			return Elite::BehaviorState::Failure;
-		
-		
+
+
 		return Elite::BehaviorState::Success;
 	}
 	

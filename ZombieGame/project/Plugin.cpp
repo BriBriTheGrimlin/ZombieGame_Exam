@@ -53,7 +53,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.SpawnPurgeZonesOnMiddleClick = true;
 	params.PrintDebugMessages = true;
 	params.ShowDebugItemNames = true;
-	params.Seed = 36;
+	params.Seed = 16;	//16
 }
 
 //Only Active in DEBUG Mode
@@ -118,6 +118,8 @@ void Plugin::Update(float dt)
 		m_pInterface->Inventory_GetItem(m_InventorySlot, info);
 		std::cout << (int)info.Type << std::endl;
 	}
+
+	
 }
 
 //Update
@@ -129,10 +131,11 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
 	auto agentInfo = m_pInterface->Agent_GetInfo();
 
+	
 
 	//Use the navmesh to calculate the next navmesh point
 	Elite::Vector2 checkpointLocation{};
-	auto nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(checkpointLocation);
+	m_nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(checkpointLocation);
 
 	//auto nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(m_Target); //Uncomment this to use mouse position as guidance
 
@@ -143,6 +146,34 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	bool seenEnemy{ false };
 
 	steering.AutoOrient = true;
+
+	m_pInterface->Draw_Point(m_nextTargetPos, 50, { 1,0,0 });
+
+	switch (m_SteeringState)
+	{
+	case Steeringstate::seek:
+		m_pSteeringBehavior = new Seek();
+		break;
+
+	case Steeringstate::flee:
+		m_pSteeringBehavior = new Flee();
+		break;
+
+	case Steeringstate::face:
+		m_pSteeringBehavior = new Face();
+		break;
+
+	case Steeringstate::evade:
+		m_pSteeringBehavior = new Evade();
+		break;
+
+	default:
+		break;
+	}
+
+	//nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(m_Target);
+	//m_pSteeringBehavior->SetTarget(nextTargetPos);
+	//m_pSteeringBehavior->CalculateSteering(steering, &agentInfo);
 
 	//UseItems
 	ItemInfo item;
@@ -193,7 +224,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 			if (enemyInfo.Type == eEnemyType::ZOMBIE_NORMAL)
 			{
 				steering.AutoOrient = false;
-				nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(checkpointLocation);
+				m_nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(checkpointLocation);
 
 				
 
@@ -249,7 +280,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 			{
 			auto itemInFOV{ GetEntitiesInFOV()[0]};
 			checkpointLocation = itemInFOV.Location;
-			nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(checkpointLocation);
+			m_nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(checkpointLocation);
 				if (agentInfo.Position.Distance(e.Location) <= agentInfo.GrabRange)
 				{
 					ItemInfo item{};
@@ -304,7 +335,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		
 		
 
-
 	for (auto& h : vHousesInFOV)
 	{
 		auto houseInView = GetHousesInFOV()[0];
@@ -312,17 +342,21 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 		checkpointLocation = houseInView.Center;
 		if (!seenItem)
 		{
-			nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(checkpointLocation);
-			steering.LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
+			m_nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(checkpointLocation);
+			steering.LinearVelocity = m_nextTargetPos - agentInfo.Position; //Desired Velocity
 			steering.LinearVelocity.Normalize(); //Normalize Desired Velocity
 			steering.LinearVelocity *= agentInfo.MaxLinearSpeed;
-			if (Elite::Distance(agentInfo.Position, nextTargetPos) <= 2)
+			if (Elite::Distance(agentInfo.Position, m_nextTargetPos) <= 2)
 			{
 				steering.AutoOrient = false;
 				steering.AngularVelocity = 1.f;
 			}
 		}
-		
+	}
+
+	if (GetHousesInFOV().size() == 0)
+	{
+		m_nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(agentInfo.Position - m_pInterface->World_GetInfo().Dimensions / 2);
 	}
 	
 
@@ -357,11 +391,11 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	}
 
 	//Simple Seek Behaviour (towards Target)
-	steering.LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
+	steering.LinearVelocity = m_nextTargetPos - agentInfo.Position; //Desired Velocity
 	steering.LinearVelocity.Normalize(); //Normalize Desired Velocity
 	steering.LinearVelocity *= agentInfo.MaxLinearSpeed; //Rescale to Max Speed
 
-	if (Distance(nextTargetPos, agentInfo.Position) < 2.f)
+	if (Distance(m_nextTargetPos, agentInfo.Position) < 2.f)
 	{
 		steering.LinearVelocity = Elite::ZeroVector2;
 	}
@@ -386,6 +420,9 @@ void Plugin::Render(float dt) const
 {
 	//This Render function should only contain calls to Interface->Draw_... functions
 	m_pInterface->Draw_SolidCircle(m_Target, .7f, { 0,0 }, { 1, 0, 0 });
+
+	m_pInterface->Draw_Circle(m_nextTargetPos, 3, { 1,0,0 });
+	
 }
 
 vector<HouseInfo> Plugin::GetHousesInFOV() const

@@ -44,34 +44,26 @@ SteeringPlugin_Output Flee::CalculateSteering(float deltaT, AgentInfo* pAgent)
 
 //FACE
 //****
-//SteeringPlugin_Output Face::CalculateSteering(float deltaT, AgentInfo* pAgent)
-//{
-//	pAgent->SetAutoOrient(false);
-//
-//	//SteeringOutput steering{};
-//	//Elite::Vector2 directionVector{ m_Target.Position - pAgent->GetPosition() };
-//	//directionVector.Normalize();
-//	//const float orientation{ Elite::GetOrientationFromVelocity(directionVector)};
-//	//steering.AngularVelocity = orientation - pAgent->GetRotation() - M_PI / 2.f;
-//
-//	const Elite::Vector2 agentDirection{ pAgent->Orientation};
-//	const Elite::Vector2 targetDirection{ (m_Target.Position - pAgent->GetPosition()).GetNormalized() };
-//
-//	const float dotProduct{ agentDirection.Dot(targetDirection) };            // - Projection of normalized vectors to check "overlap" (through projection)
-//
-//	float turnDirection{};
-//	constexpr float epsilon{ 0.01f };                                        // - Chosen by iterative testing
-//	if (dotProduct > 1 + epsilon || dotProduct < 1 - epsilon)                // - If agent & target vector overlap, result of dot will be 1
-//	{
-//		const float crossResult{ agentDirection.Cross(targetDirection) };    // - Determines turning direction
-//		turnDirection = crossResult / abs(crossResult);                      // - "Unitize" turnDirection so speed of turning is not 
-//	}                                                                        //	  determined by angular distance to target
-//
-//	SteeringPlugin_Output steering = {};
-//	steering.AngularVelocity = turnDirection * pAgent->GetMaxAngularSpeed();
-//
-//	return steering;
-//}
+SteeringPlugin_Output Face::CalculateSteering(float deltaT, AgentInfo* pAgent)
+{
+	const Elite::Vector2 agentDirection{ cosf(pAgent->Orientation), sinf(pAgent->Orientation)};
+	const Elite::Vector2 targetDirection{ (m_Target - pAgent->Position).GetNormalized() };
+
+	const float dotProduct{ agentDirection.Dot(targetDirection) };            // - Projection of normalized vectors to check "overlap" (through projection)
+
+	float turnDirection{};
+	constexpr float epsilon{ 0.01f };                                        // - Chosen by iterative testing
+	if (dotProduct > 1 + epsilon || dotProduct < 1 - epsilon)                // - If agent & target vector overlap, result of dot will be 1
+	{
+		const float crossResult{ agentDirection.Cross(targetDirection) };    // - Determines turning direction
+		turnDirection = crossResult / abs(crossResult);                      // - "Unitize" turnDirection so speed of turning is not 
+	}                                                                        //	  determined by angular distance to target
+
+	SteeringPlugin_Output steering = {};
+	steering.AngularVelocity = turnDirection * pAgent->MaxAngularSpeed;
+
+	return steering;
+}
 
 //EVADE
 //****

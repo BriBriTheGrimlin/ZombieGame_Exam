@@ -2,15 +2,17 @@
 #include "EBlackboard.h"
 #include "IExamPlugin.h"
 #include "Exam_HelperStructs.h"
+#include "SteeringBehaviors.h"
 
 class IBaseInterface;
 class IExamInterface;
+class ISteeringBehavior;
 
 class Plugin :public IExamPlugin
 {
 public:
 
-	enum SteeringBehaviours
+	enum Steeringstate
 	{
 		seek,
 		flee,
@@ -43,10 +45,16 @@ private:
 	bool m_UseItem = false; //Demo purpose
 	bool m_RemoveItem = false; //Demo purpose
 	float m_AngSpeed = 0.f; //Demo purpose
+	Elite::Vector2 m_nextTargetPos;
 
 	UINT m_InventorySlot = 0;
 
 	Elite::Blackboard* m_pBlackboard;
+
+
+	Steeringstate m_SteeringState;
+
+	ISteeringBehavior* m_pSteeringBehavior;
 };
 
 //ENTRY
