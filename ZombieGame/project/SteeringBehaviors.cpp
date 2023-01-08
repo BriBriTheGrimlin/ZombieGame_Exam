@@ -3,51 +3,52 @@
 //Precompiled Header [ALWAYS ON TOP IN CPP]
 #include "stdafx.h"
 
-//Includes
-#include "SteeringBehaviors.h"
-
-//SEEK
-//****
-SteeringPlugin_Output Seek::CalculateSteering(float deltaT, AgentInfo* pAgent)
+SteeringBehavior::SteeringBehavior(IExamInterface* pInterface, SteeringPlugin_Output* pSteeringbh)
+	: m_pInterface{ pInterface }
+	, m_pSteeringbh{ pSteeringbh }
 {
-	SteeringPlugin_Output steering = {};
-
-	steering.LinearVelocity = m_Target - pAgent->Position;
-	steering.LinearVelocity.Normalize();
-	steering.LinearVelocity *= pAgent->MaxLinearSpeed;
-
-	return steering;
+	
 }
 
 
-
-//FLEE
+//SEEK
 //****
-SteeringPlugin_Output Flee::CalculateSteering(float deltaT, AgentInfo* pAgent)
+void SteeringBehavior::Seek(const Elite::Vector2 target) const
 {
-	Elite::Vector2 toTarget = pAgent->Position - m_Target;
+	auto agentInfo = m_pInterface->Agent_GetInfo();
+
+	auto nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(target);
+
+	m_pSteeringbh->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
+	m_pSteeringbh->LinearVelocity.Normalize();						  //Normalize Desired Velocity
+	m_pSteeringbh->LinearVelocity *= agentInfo.MaxLinearSpeed;
+}
+
+SteeringPlugin_Output SteeringBehavior::Flee(const Elite::Vector2& target, float radius) const
+{
+	auto agentInfo = m_pInterface->Agent_GetInfo();
+
+	Elite::Vector2 toTarget = agentInfo.Position - target;
 	float distanceSqrd = toTarget.MagnitudeSquared();
 
-	SteeringPlugin_Output steering = {};
-	if (distanceSqrd > m_FleeRadius * m_FleeRadius)
+	SteeringPlugin_Output steering ={};
+	if (distanceSqrd > radius * radius)
 	{
 		return steering;
 	}
 
-	steering.LinearVelocity = m_Target - pAgent->Position;
+	steering.LinearVelocity = target - agentInfo.Position;
 	steering.LinearVelocity.Normalize();
-	steering.LinearVelocity *= -pAgent->MaxLinearSpeed;
+	steering.LinearVelocity *= -agentInfo.MaxLinearSpeed;
 
 	return steering;
 }
-
-
-//FACE
-//****
-SteeringPlugin_Output Face::CalculateSteering(float deltaT, AgentInfo* pAgent)
+SteeringPlugin_Output SteeringBehavior::Face(const Elite::Vector2 target) const
 {
-	const Elite::Vector2 agentDirection{ cosf(pAgent->Orientation), sinf(pAgent->Orientation)};
-	const Elite::Vector2 targetDirection{ (m_Target - pAgent->Position).GetNormalized() };
+	auto AgentInfo = m_pInterface->Agent_GetInfo();
+
+	const Elite::Vector2 agentDirection{ cosf(AgentInfo.Orientation), sinf(AgentInfo.Orientation) };
+	const Elite::Vector2 targetDirection{ (target - AgentInfo.Position).GetNormalized() };
 
 	const float dotProduct{ agentDirection.Dot(targetDirection) };            // - Projection of normalized vectors to check "overlap" (through projection)
 
@@ -60,27 +61,26 @@ SteeringPlugin_Output Face::CalculateSteering(float deltaT, AgentInfo* pAgent)
 	}                                                                        //	  determined by angular distance to target
 
 	SteeringPlugin_Output steering = {};
-	steering.AngularVelocity = turnDirection * pAgent->MaxAngularSpeed;
+	steering.AngularVelocity = turnDirection * AgentInfo.MaxAngularSpeed;
 
 	return steering;
 }
 
-//EVADE
-//****
-SteeringPlugin_Output Evade::CalculateSteering(float deltaT, AgentInfo* pAgent)
+SteeringPlugin_Output SteeringBehavior::Evade(const Elite::Vector2 target) const
 {
 	SteeringPlugin_Output steering{};
 	Elite::Vector2 direction{};
-	const Elite::Vector2 evadeMagnitude = m_Target - pAgent->Position;
+	auto agentInfo = m_pInterface->Agent_GetInfo();
+	const Elite::Vector2 evadeMagnitude = target - agentInfo.Position;
 
 	if (evadeMagnitude.MagnitudeSquared() <= 15 * 15)
 	{
 		//			'-' because we want to get away and not towards the target
-		direction = -(evadeMagnitude)+m_Target;
+		direction = -(evadeMagnitude) + target;
 	}
 
 	steering.LinearVelocity = direction;
 	steering.LinearVelocity.Normalize();
-	steering.LinearVelocity *= pAgent->MaxLinearSpeed;
+	steering.LinearVelocity *= agentInfo.MaxLinearSpeed;
 	return steering;
 }

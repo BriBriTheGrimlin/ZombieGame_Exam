@@ -19,9 +19,11 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	info.Student_Class = "2DAE07";
 
 	m_pBlackboard = new Elite::Blackboard();
+	m_pBlackboard->AddData("InterFace", m_pInterface);
+	m_pBlackboard->AddData("SteeringBehavior", m_pSteeringBehavior);
 	m_pBlackboard->AddData("AgentInfo", m_pInterface->Agent_GetInfo());
-
-	//Test
+	m_pBlackboard->AddData("ItemInFov", GetEntitiesInFOV());
+	m_pBlackboard->AddData("HouseInFov", GetHousesInFOV());
 }
 
 //Called only once
@@ -148,28 +150,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	steering.AutoOrient = true;
 
 	m_pInterface->Draw_Point(m_nextTargetPos, 50, { 1,0,0 });
-
-	switch (m_SteeringState)
-	{
-	case Steeringstate::seek:
-		m_pSteeringBehavior = new Seek();
-		break;
-
-	case Steeringstate::flee:
-		m_pSteeringBehavior = new Flee();
-		break;
-
-	case Steeringstate::face:
-		m_pSteeringBehavior = new Face();
-		break;
-
-	case Steeringstate::evade:
-		m_pSteeringBehavior = new Evade();
-		break;
-
-	default:
-		break;
-	}
 
 	//nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(m_Target);
 	//m_pSteeringBehavior->SetTarget(nextTargetPos);

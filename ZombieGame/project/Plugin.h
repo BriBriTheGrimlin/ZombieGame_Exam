@@ -51,9 +51,6 @@ private:
 
 	Elite::Blackboard* m_pBlackboard;
 
-
-	Steeringstate m_SteeringState;
-
 	ISteeringBehavior* m_pSteeringBehavior;
 };
 
