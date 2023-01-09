@@ -28,11 +28,10 @@ void SteeringBehavior::Flee(const Elite::Vector2& target, float radius) const
 {
 	auto agentInfo = m_pInterface->Agent_GetInfo();
 
-	Elite::Vector2 toTarget = agentInfo.Position - target;
+	Elite::Vector2 toTarget = target - agentInfo.Position;
 	auto newTarget = agentInfo.Position - (toTarget.GetNormalized() * radius);
 
 	Seek(newTarget);
-
 }
 
 //FACE

@@ -31,18 +31,38 @@ namespace  BT_Actions
 
 	Elite::BehaviorState ChangeToFlee(Elite::Blackboard* pBlackboard)
 	{
-		SteeringBehavior* pSteeringBh;
+		SteeringBehavior* pSteeringBh{};
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
+		IExamInterface* pInterface{ nullptr };
 
 		Elite::Vector2 targetPos;
 		if (!pBlackboard->GetData("SteeringBehavior", pSteeringBh) || pSteeringBh == nullptr)
 			return Elite::BehaviorState::Failure;
-		if (!pBlackboard->GetData("InFov", pEntitiesInFOV) || pEntitiesInFOV == nullptr)
+		if (!pBlackboard->GetData("EntityInFov", pEntitiesInFOV) || pEntitiesInFOV == nullptr)
+			return Elite::BehaviorState::Failure;
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 			return Elite::BehaviorState::Failure;
 
+		auto agentInfo = pInterface->Agent_GetInfo();
 
+		for (const auto& entity : *pEntitiesInFOV)
+		{
+			if(entity.Type == eEntityType::PURGEZONE)
+			{
+				PurgeZoneInfo purgeZone{};
+				pInterface->PurgeZone_GetInfo(entity, purgeZone);
+				pSteeringBh->Flee(purgeZone.Center, purgeZone.Radius);
+				return Elite::BehaviorState::Success;
+			}
 
-		//pSteeringBh->Flee();
+			if(entity.Type == eEntityType::ENEMY)
+			{
+				EnemyInfo enemy{};
+				pInterface->Enemy_GetInfo(entity, enemy);
+				pSteeringBh->Flee(enemy.Location, 10);
+				return Elite::BehaviorState::Success;
+			}
+		}
 		return Elite::BehaviorState::Success;
 	}
 
@@ -58,7 +78,7 @@ namespace  BT_Actions
 		if (pBlackboard->GetData("SteeringBehavior", pSteeringBh) == false || pSteeringBh == nullptr)
 			return Elite::BehaviorState::Failure;
 
-		if (pBlackboard->GetData("InFov", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+		if (pBlackboard->GetData("EntityInFov", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
 			return Elite::BehaviorState::Failure;
 
 		if (pEntitiesInFOV->empty())
@@ -150,7 +170,7 @@ namespace  BT_Actions
 			return Elite::BehaviorState::Failure;
 		if (pBlackboard->GetData("SteeringBehavior", pSteeringBh) == false || pSteeringBh == nullptr)
 			return Elite::BehaviorState::Failure;
-		if (pBlackboard->GetData("InFov", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+		if (pBlackboard->GetData("EntityInFov", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
 			return Elite::BehaviorState::Failure;
 		if (pBlackboard->GetData("HouseInFov", pHouseInFov) == false || pHouseInFov == nullptr)
 			return Elite::BehaviorState::Failure;
@@ -186,15 +206,46 @@ namespace  BT_Actions
 			return Elite::BehaviorState::Failure;
 		}
 
-		Elite::Vector2 centerHouse{};
-		for (int i{ 0 }; i < pHouseInFov->size(); ++i)
-		{
-			centerHouse = pHouseInFov->at(i).Center;
-		}
-		// Else, face towards closest enemy
-		pSteeringBh->Seek(centerHouse);
-
 		return Elite::BehaviorState::Success;
+	}
+
+	Elite::BehaviorState GoInsideHouse(Elite::Blackboard* pblackboard)
+	{
+		std::vector<HouseInfo>* pHousesInPov{ nullptr };
+		SteeringPlugin_Output* pSteeringOutputData{ nullptr };
+		IExamInterface* pInterface{ nullptr };
+		AgentInfo* agentInfo{ nullptr };
+
+		if (!pblackboard->GetData("SteeringBehavior", pSteeringOutputData) || pSteeringOutputData == nullptr)
+			return Elite::BehaviorState::Failure;
+		if (!pblackboard->GetData("HouseInFov", pHousesInPov) || pHousesInPov == nullptr)
+			return Elite::BehaviorState::Failure;
+		if (!pblackboard->GetData("AgentInfo", agentInfo) || agentInfo == nullptr)
+			return Elite::BehaviorState::Failure;
+		if (!pblackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
+			return Elite::BehaviorState::Failure;
+
+		for (const auto& house : *pHousesInPov)
+		{
+			//pSteeringBh->Seek(house.Center);
+
+			auto houseInView = pHousesInPov[0];
+
+			auto checkpointLocation = house.Center;
+
+			checkpointLocation = pInterface->NavMesh_GetClosestPathPoint(checkpointLocation);
+			pSteeringOutputData->LinearVelocity = checkpointLocation - agentInfo->Position; //Desired Velocity
+			pSteeringOutputData->LinearVelocity.Normalize(); //Normalize Desired Velocity
+			pSteeringOutputData->LinearVelocity *= agentInfo->MaxLinearSpeed;
+			if (Elite::Distance(agentInfo->Position, checkpointLocation) <= 2)
+			{
+				pSteeringOutputData->AutoOrient = false;
+				pSteeringOutputData->AngularVelocity = 1.f;
+				return Elite::BehaviorState::Success;
+			}
+			Elite::BehaviorState::Failure;
+		}
+		
 	}
 }
 namespace BT_Conditions
@@ -204,7 +255,7 @@ namespace BT_Conditions
 	{
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
 
-		if (pBlackboard->GetData("InFov", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+		if (!pBlackboard->GetData("EntityInFov", pEntitiesInFOV) || pEntitiesInFOV == nullptr)
 			return false;
 
 
@@ -224,10 +275,10 @@ namespace BT_Conditions
 		IExamInterface* pInterface{ nullptr };
 		std::vector<HouseInfo>* pHousesInFOV{ nullptr };
 
-		if (pBlackboard->GetData("InterFace", pInterface) == false || pInterface == nullptr)
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 			return false;
 
-		if (pBlackboard->GetData("HouseInFov", pHousesInFOV) == false || pHousesInFOV == nullptr)
+		if (!pBlackboard->GetData("HouseInFov", pHousesInFOV) || pHousesInFOV == nullptr)
 			return false;
 
 
@@ -239,11 +290,11 @@ namespace BT_Conditions
 		IExamInterface* pInterface{ nullptr };
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
 
-		if (pBlackboard->GetData("InterFace", pInterface) == false || pInterface == nullptr)
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 		{
 			return false;
 		}
-		if (pBlackboard->GetData("InFov", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+		if (!pBlackboard->GetData("EntityInFov", pEntitiesInFOV) || pEntitiesInFOV == nullptr)
 		{
 			return false;
 		}
@@ -255,7 +306,7 @@ namespace BT_Conditions
 	{
 		IExamInterface* InterFace{ nullptr };
 
-		if (pBlackboard->GetData("InterFace", InterFace) == false || InterFace == nullptr)
+		if (!pBlackboard->GetData("InterFace", InterFace) || InterFace == nullptr)
 		{
 			return false;
 		}
@@ -268,7 +319,7 @@ namespace BT_Conditions
 	{
 		IExamInterface* InterFace{ nullptr };
 
-		if (pBlackboard->GetData("InterFace", InterFace) == false || InterFace == nullptr)
+		if (!pBlackboard->GetData("InterFace", InterFace) || InterFace == nullptr)
 		{
 			return false;
 		}
@@ -281,7 +332,7 @@ namespace BT_Conditions
 	{
 		IExamInterface* InterFace{ nullptr };
 
-		if (pBlackboard->GetData("InterFace", InterFace) == false || InterFace == nullptr)
+		if (!pBlackboard->GetData("InterFace", InterFace) || InterFace == nullptr)
 		{
 			return false;
 		}
@@ -301,7 +352,7 @@ namespace BT_Conditions
 	{
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
 		
-		if (pBlackboard->GetData("InFov", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+		if (!pBlackboard->GetData("EntityInFov", pEntitiesInFOV) || pEntitiesInFOV == nullptr)
 			return false;
 		
 		for (const auto& entity : *pEntitiesInFOV)

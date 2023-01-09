@@ -31,7 +31,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pBlackboard->AddData("InterFace", m_pInterface);
 	m_pBlackboard->AddData("SteeringBehavior", m_pSteeringBehavior);
 	m_pBlackboard->AddData("AgentInfo", m_pInterface->Agent_GetInfo());
-	m_pBlackboard->AddData("InFov", m_pEntitiesInFOV);
+	m_pBlackboard->AddData("EntityInFov", m_pEntitiesInFOV);
 	m_pBlackboard->AddData("HouseInFov", m_pHousesInFOV);
 
 	m_pBehaviorTree = new Elite::BehaviorTree(m_pBlackboard,
@@ -44,7 +44,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 						// Is PurgeZone in Fov													
 						new BehaviorConditional(&BT_Conditions::IsPurgeZoneInFOV),	 
 						// Run from Purgezone													
-						new BehaviorAction(&BT_Actions::ChangeToSeek)				 
+						new BehaviorAction(&BT_Actions::ChangeToFlee)				 
 					}																 
 				), new BehaviorSequence												 
 				(																	 
@@ -62,8 +62,8 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 						new BehaviorSequence										 
 								(													 
 									{
-										new BehaviorConditional(&BT_Conditions::IsHouseInFOV)
-										//new BehaviorAction(&BT_Actions::)
+										new BehaviorConditional(&BT_Conditions::IsHouseInFOV),
+										new BehaviorAction(&BT_Actions::GoInsideHouse)
 									  }												 
 										),											 
 					}																					
