@@ -3,10 +3,11 @@
 #include "IExamPlugin.h"
 #include "Exam_HelperStructs.h"
 #include "SteeringBehaviors.h"
+#include "Behaviors.h"
 
 class IBaseInterface;
 class IExamInterface;
-class ISteeringBehavior;
+class SteeringBehavior;
 
 class Plugin :public IExamPlugin
 {
@@ -51,7 +52,13 @@ private:
 
 	Elite::Blackboard* m_pBlackboard;
 
-	ISteeringBehavior* m_pSteeringBehavior;
+	SteeringBehavior* m_pSteeringBehavior;
+	SteeringPlugin_Output* m_pSteeringOutputData;
+
+	Elite::BehaviorTree* m_pBehaviorTree;
+
+	std::vector<EntityInfo>* m_pEntitiesInFOV;
+	std::vector<HouseInfo>* m_pHousesInFOV;
 };
 
 //ENTRY

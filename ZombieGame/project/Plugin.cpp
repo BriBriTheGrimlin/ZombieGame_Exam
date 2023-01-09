@@ -1,8 +1,11 @@
 #include "stdafx.h"
 #include "Plugin.h"
 #include "IExamInterface.h"
+#include "EBehaviorTree.h"
+#include "Behaviors.h"
 
 using namespace std;
+using namespace Elite;
 
 //Called only once, during initialization
 void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
@@ -18,12 +21,60 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	info.Student_LastName = "Hoet";
 	info.Student_Class = "2DAE07";
 
+	m_pSteeringOutputData = new SteeringPlugin_Output();
+	m_pEntitiesInFOV = new std::vector<EntityInfo>();
+	m_pHousesInFOV = new std::vector<HouseInfo>();
+
+	m_pSteeringBehavior = new SteeringBehavior(m_pInterface, m_pSteeringOutputData);
+
 	m_pBlackboard = new Elite::Blackboard();
 	m_pBlackboard->AddData("InterFace", m_pInterface);
 	m_pBlackboard->AddData("SteeringBehavior", m_pSteeringBehavior);
 	m_pBlackboard->AddData("AgentInfo", m_pInterface->Agent_GetInfo());
-	m_pBlackboard->AddData("InFov", GetEntitiesInFOV());
-	m_pBlackboard->AddData("HouseInFov", GetHousesInFOV());
+	m_pBlackboard->AddData("InFov", m_pEntitiesInFOV);
+	m_pBlackboard->AddData("HouseInFov", m_pHousesInFOV);
+
+	m_pBehaviorTree = new Elite::BehaviorTree(m_pBlackboard,
+		new BehaviorSelector
+		(
+			{
+				new BehaviorSequence												 
+				(																	 
+					{																 
+						// Is PurgeZone in Fov													
+						new BehaviorConditional(&BT_Conditions::IsPurgeZoneInFOV),	 
+						// Run from Purgezone													
+						new BehaviorAction(&BT_Actions::ChangeToSeek)				 
+					}																 
+				), new BehaviorSequence												 
+				(																	 
+					{																 
+						//Is Enemy in Fov														
+						new BehaviorConditional(&BT_Conditions::IsEnemyInFOV),		 
+																					 
+						new BehaviorSelector										 
+						(															 
+							{														 
+								new BehaviorConditional(&BT_Conditions::HaveGun),	 
+								new BehaviorAction(&BT_Actions::ShootZombieOrRun)
+										   }										 
+						),															 
+						new BehaviorSequence										 
+								(													 
+									{
+										new BehaviorConditional(&BT_Conditions::IsHouseInFOV)
+										//new BehaviorAction(&BT_Actions::)
+									  }												 
+										),											 
+					}																					
+				),																						
+																										
+			}
+	));
+	
+		
+
+	
 }
 
 //Called only once
@@ -133,7 +184,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
 	auto agentInfo = m_pInterface->Agent_GetInfo();
 
-	
+	m_pBehaviorTree->Update(dt);
 
 	//Use the navmesh to calculate the next navmesh point
 	Elite::Vector2 checkpointLocation{};
@@ -141,9 +192,9 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	//auto nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(m_Target); //Uncomment this to use mouse position as guidance
 
-	auto vHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
-	auto vEntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
-
+	*m_pHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
+	*m_pEntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
+	/*
 	bool seenItem{ false };
 	bool seenEnemy{ false };
 
@@ -151,27 +202,23 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	m_pInterface->Draw_Point(m_nextTargetPos, 50, { 1,0,0 });
 
-	//nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(m_Target);
-	//m_pSteeringBehavior->SetTarget(nextTargetPos);
-	//m_pSteeringBehavior->CalculateSteering(steering, &agentInfo);
-
 	//UseItems
 	ItemInfo item;
-	//if (m_pInterface->Inventory_GetItem(4, item))
-	//{
-	//	if (agentInfo.Health <= agentInfo.Health - 4)
-	//	{
-	//		m_pInterface->Inventory_UseItem(4);
-	//	}
-	//}
-	//
-	//if (m_pInterface->Inventory_GetItem(2, item))
-	//{
-	//	if (agentInfo.Energy <= agentInfo.Energy - 6)
-	//	{
-	//		m_pInterface->Inventory_UseItem(2);
-	//	}
-	//}
+	if (m_pInterface->Inventory_GetItem(4, item))
+	{
+		if (agentInfo.Health <= agentInfo.Health - 4)
+		{
+			m_pInterface->Inventory_UseItem(4);
+		}
+	}
+	
+	if (m_pInterface->Inventory_GetItem(2, item))
+	{
+		if (agentInfo.Energy <= agentInfo.Energy - 6)
+		{
+			m_pInterface->Inventory_UseItem(2);
+		}
+	}
 	if(agentInfo.WasBitten)
 	{
 		m_CanRun = true;
@@ -337,7 +384,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	{
 		m_nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(agentInfo.Position - m_pInterface->World_GetInfo().Dimensions / 2);
 	}
-	
+	*/
 
 	//INVENTORY USAGE DEMO
 	//********************
@@ -391,7 +438,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	m_UseItem = false;
 	m_RemoveItem = false;
 
-	return steering;
+	return *m_pSteeringOutputData;
 }
 
 //This function should only be used for rendering debug elements

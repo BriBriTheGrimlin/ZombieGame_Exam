@@ -19,4 +19,6 @@
 		IExamInterface* m_pInterface = nullptr;
 		SteeringPlugin_Output* m_pSteeringbh = nullptr;
 	};
+
+
 #pragma endregion
