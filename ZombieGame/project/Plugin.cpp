@@ -22,7 +22,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pBlackboard->AddData("InterFace", m_pInterface);
 	m_pBlackboard->AddData("SteeringBehavior", m_pSteeringBehavior);
 	m_pBlackboard->AddData("AgentInfo", m_pInterface->Agent_GetInfo());
-	m_pBlackboard->AddData("ItemInFov", GetEntitiesInFOV());
+	m_pBlackboard->AddData("InFov", GetEntitiesInFOV());
 	m_pBlackboard->AddData("HouseInFov", GetHousesInFOV());
 }
 
@@ -211,7 +211,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 				auto xdifference = enemyInfo.Location.x - agentInfo.Position.x;
 				auto ydifference = enemyInfo.Location.y - agentInfo.Position.y;
 				steering.AngularVelocity = atan(ydifference / xdifference) ;
-				//std::cout << atan(ydifference.)
 				auto angleBetweenAgentAndEnemy = atan(ydifference / xdifference);
 
 				std::cout << agentInfo.Orientation + angleBetweenAgentAndEnemy << '\n';

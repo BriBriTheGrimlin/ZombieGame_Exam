@@ -17,67 +17,200 @@ namespace  BT_Actions
 {
 	Elite::BehaviorState ChangeToSeek(Elite::Blackboard* pBlackboard)
 	{
-		SteeringPlugin_Output* pSteering;
-		Elite::Vector2 targetPos{};
-		if (!pBlackboard->GetData("Steering", pSteering) || pSteering == nullptr)
+		SteeringBehavior* pSteeringBh;
+		if (!pBlackboard->GetData("Steering", pSteeringBh) || pSteeringBh == nullptr)
 			return Elite::BehaviorState::Failure;
-		if (!pBlackboard->GetData("Target", targetPos))
+
+		Elite::Vector2 target{ 0,-100 };
+
+		pSteeringBh->Seek(target);
+	}
+
+	Elite::BehaviorState ChangeToFlee(Elite::Blackboard* pBlackboard)
+	{
+		SteeringBehavior* pSteeringBh;
+
+		Elite::Vector2 targetPos;
+		if (!pBlackboard->GetData("Steering", pSteeringBh) || pSteeringBh == nullptr)
 			return Elite::BehaviorState::Failure;
 
 
 		return Elite::BehaviorState::Success;
 	}
-	
-	//Elite::BehaviorState ChangeToFlee(Elite::Blackboard* pBlackboard)
-	//{
-	//	SteeringPlugin_Output* pAgent;
-	//
-	//	Elite::Vector2 targetPos;
-	//	if (!pBlackboard->GetData("Agent", pAgent) || pAgent == nullptr)
-	//		return Elite::BehaviorState::Failure;
-	//	if (!pBlackboard->GetData("Target", targetPos))
-	//		return Elite::BehaviorState::Failure;
-	//
-	//	
-	//	return Elite::BehaviorState::Success;
-	//}
-}
 
-namespace BT_Conditions
-{
-	//bool IsFoodNearby(Elite::Blackboard* pBlackboard)
-	//{
-	//	AgarioAgent* pAgent;
-	//	std::vector<AgarioFood*>* pFoodVec;
-	//	if (!pBlackboard->GetData("Agent", pAgent) || pAgent == nullptr)
-	//		return false;
-	//	if (!pBlackboard->GetData("FoodVec", pFoodVec) || pFoodVec == nullptr)
-	//		return false;
-	//
-	//	const float searchRadius = { 30.f + pAgent->GetRadius() };
-	//	//DEBUGRENDERER2D->DrawCircle(pAgent->GetPosition(), searchRadius, { 0, 0, 1 }, 0.f);
-	//
-	//	AgarioFood* pClosestFood = nullptr;
-	//	float closestDistSqrt = { searchRadius * searchRadius };
-	//
-	//	const Elite::Vector2 agentPos = pAgent->GetPosition();
-	//	//Todo: Debug rendering!!!
-	//
-	//	for (auto& pFood : *pFoodVec)
-	//	{
-	//		float distSqrt = pFood->GetPosition().DistanceSquared(agentPos);
-	//		if (distSqrt < closestDistSqrt)
-	//		{
-	//			pClosestFood = pFood;
-	//			closestDistSqrt = distSqrt;
-	//		}
-	//	}
-	//	if (pClosestFood != nullptr)
-	//	{
-	//		DEBUGRENDERER2D->DrawSegment(pClosestFood->GetPosition(), pAgent->GetPosition(), { 0, 0, 1 });
-	//		pBlackboard->ChangeData("Target", pClosestFood->GetPosition());
-	//		return true;
-	//	}
-	//	return false;
+	Elite::BehaviorState LootFOV(Elite::Blackboard* pBlackboard)
+	{
+		IExamInterface* pInterface{ nullptr };
+		SteeringBehavior* pSteeringBh{};
+		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
+
+		if (pBlackboard->GetData("interface", pInterface) == false || pInterface == nullptr)
+			return Elite::BehaviorState::Failure;
+
+		if (pBlackboard->GetData("SteeringBehavior", pSteeringBh) == false || pSteeringBh == nullptr)
+			return Elite::BehaviorState::Failure;
+
+		if (pBlackboard->GetData("InFov", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+			return Elite::BehaviorState::Failure;
+
+		if (pEntitiesInFOV->empty())
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		auto agentInfo = pInterface->Agent_GetInfo();
+
+
+
+		EntityInfo closestItem{};
+		closestItem.Location.x = 1000.f;
+		for (const auto& entity : *pEntitiesInFOV)
+		{
+			if ((closestItem.Location - pInterface->Agent_GetInfo().Position).MagnitudeSquared() < agentInfo.GrabRange * agentInfo.GrabRange)
+			{
+				if (entity.Type == eEntityType::ITEM)
+				{
+					ItemInfo item{};
+					pInterface->Item_GetInfo(entity, item);
+
+					if (item.Type == eItemType::SHOTGUN)
+					{
+
+						pInterface->Item_Grab(entity, item);
+						pInterface->Inventory_AddItem(0, item);
+						return Elite::BehaviorState::Running;
+					}
+					if (item.Type == eItemType::PISTOL)
+					{
+						pInterface->Item_Grab(entity, item);
+						pInterface->Inventory_AddItem(1, item);
+						return Elite::BehaviorState::Running;
+					}
+					if (item.Type == eItemType::FOOD)
+					{
+						if (!pInterface->Inventory_GetItem(2, item))
+						{
+							pInterface->Item_Grab(entity, item);
+							pInterface->Inventory_AddItem(2, item);
+							return Elite::BehaviorState::Running;
+						}
+						if (pInterface->Inventory_GetItem(2, item))
+						{
+							pInterface->Item_Grab(entity, item);
+							pInterface->Inventory_AddItem(3, item);
+							return Elite::BehaviorState::Running;
+						}
+					}
+					if (item.Type == eItemType::MEDKIT)
+					{
+						if (!pInterface->Inventory_GetItem(4, item))
+						{
+							pInterface->Item_Grab(entity, item);
+							pInterface->Inventory_AddItem(4, item);
+							return Elite::BehaviorState::Running;
+						}
+						else
+						{
+							pInterface->Item_Destroy(entity);
+							return Elite::BehaviorState::Running;
+						}
+					}
+					if (item.Type == eItemType::GARBAGE)
+					{
+						pInterface->Item_Destroy(entity);
+						return Elite::BehaviorState::Running;
+					}
+				}
+			}
+			auto target = closestItem.Location;
+
+
+			pSteeringBh->Seek(target);
+			return Elite::BehaviorState::Success;
+		}
+
+	}
+
+	namespace BT_Conditions
+	{
+		bool IsEnemyInFOV(Elite::Blackboard* pBlackboard)
+		{
+			std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
+
+			if (pBlackboard->GetData("InFov", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+				return false;
+
+
+			for (int i{ 0 }; i < pEntitiesInFOV->size(); ++i)
+			{
+				if (pEntitiesInFOV->at(i).Type == eEntityType::ENEMY)
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		bool IsHouseInFOV(Elite::Blackboard* pBlackboard)
+		{
+			IExamInterface* pInterface{ nullptr };
+			std::vector<HouseInfo>* pHousesInFOV{ nullptr };
+
+			if (pBlackboard->GetData("InterFace", pInterface) == false || pInterface == nullptr)
+				return false;
+
+			if (pBlackboard->GetData("HouseInFov", pHousesInFOV) == false || pHousesInFOV == nullptr)
+				return false;
+
+
+			return pHousesInFOV->size() > 0;
+		}
+
+		bool LootInFOV(Elite::Blackboard* pBlackboard)
+		{
+			IExamInterface* pInterface{ nullptr };
+			std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
+
+			if (pBlackboard->GetData("InterFace", pInterface) == false || pInterface == nullptr)
+			{
+				return false;
+			}
+			if (pBlackboard->GetData("InFov", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+			{
+				return false;
+			}
+
+			return pEntitiesInFOV->size() > 0;
+		}
+
+		bool DoIHaveMedKit(Elite::Blackboard* pBlackboard)
+		{
+			IExamInterface* InterFace{ nullptr };
+
+			if (pBlackboard->GetData("InterFace", InterFace) == false || InterFace == nullptr)
+			{
+				return false;
+			}
+
+			ItemInfo item{};
+
+			return InterFace->Inventory_GetItem(4, item);
+		}
+
+		bool DoIHaveFood(Elite::Blackboard* pBlackboard)
+		{
+			IExamInterface* InterFace{ nullptr };
+
+			if (pBlackboard->GetData("InterFace", InterFace) == false || InterFace == nullptr)
+			{
+				return false;
+			}
+
+			ItemInfo item{};
+
+			return InterFace->Inventory_GetItem(3, item);
+		}
+	}
 }
 #endif

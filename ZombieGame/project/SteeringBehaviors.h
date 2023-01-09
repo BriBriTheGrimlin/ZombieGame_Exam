@@ -12,9 +12,8 @@
 		
 
 		void Seek(const Elite::Vector2 target) const;
-		SteeringPlugin_Output Flee(const Elite::Vector2& target, float radius) const;
-		SteeringPlugin_Output Face(const Elite::Vector2 target) const;
-		SteeringPlugin_Output Evade(const Elite::Vector2 target) const;
+		void Flee(const Elite::Vector2& target, float radius) const;
+		void Face(const Elite::Vector2 target) const;
 
 	private:
 		IExamInterface* m_pInterface = nullptr;
