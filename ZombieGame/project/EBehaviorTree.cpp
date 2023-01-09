@@ -40,12 +40,9 @@ BehaviorState BehaviorSelector::Execute(Blackboard* pBlackBoard)
 //SEQUENCE
 BehaviorState BehaviorSequence::Execute(Blackboard* pBlackBoard)
 {
-	//TODO: FIll in this code
 	//Loop over all children in m_ChildBehaviors
 	for (auto& child : m_ChildBehaviors)
 	{
-
-
 		//Every Child: Execute and store the result in m_CurrentState
 		m_CurrentState = child->Execute(pBlackBoard);
 
@@ -112,6 +109,22 @@ BehaviorState BehaviorConditional::Execute(Blackboard* pBlackBoard)
 		return m_CurrentState;
 	}
 
+}
+
+BehaviorState Elite::BehaviorInvertConditional::Execute(Blackboard* pBlackBoard)
+{
+	if (m_fpConditional == nullptr)
+		return BehaviorState::Failure;
+
+	switch (m_fpConditional(pBlackBoard))
+	{
+	case true:
+		m_CurrentState = BehaviorState::Failure;
+		return m_CurrentState;
+	case false:
+		m_CurrentState = m_CurrentState = BehaviorState::Success;
+		return m_CurrentState;
+	}
 }
 //-----------------------------------------------------------------
 // BEHAVIOR TREE ACTION (IBehavior)

@@ -107,6 +107,15 @@ namespace Elite
 		std::function<bool(Blackboard*)> m_fpConditional = nullptr;
 	};
 
+	class BehaviorInvertConditional : public IBehavior
+	{
+	public:
+		explicit BehaviorInvertConditional(std::function<bool(Blackboard*)> fp) : m_fpConditional(fp) {}
+		virtual BehaviorState Execute(Blackboard* pBlackBoard) override;
+
+	private:
+		std::function<bool(Blackboard*)> m_fpConditional = nullptr;
+	};
 	//-----------------------------------------------------------------
 	// BEHAVIOR TREE ACTION (IBehavior)
 	//-----------------------------------------------------------------
@@ -141,7 +150,6 @@ namespace Elite
 				m_CurrentState = BehaviorState::Failure;
 				return;
 			}
-
 			m_CurrentState = m_pRootBehavior->Execute(m_pBlackBoard);
 		}
 		Blackboard* GetBlackboard() const

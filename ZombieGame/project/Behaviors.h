@@ -54,16 +54,8 @@ namespace  BT_Actions
 				pSteeringBh->Flee(purgeZone.Center, purgeZone.Radius);
 				return Elite::BehaviorState::Success;
 			}
-
-			if(entity.Type == eEntityType::ENEMY)
-			{
-				EnemyInfo enemy{};
-				pInterface->Enemy_GetInfo(entity, enemy);
-				pSteeringBh->Flee(enemy.Location, 10);
-				return Elite::BehaviorState::Success;
-			}
 		}
-		return Elite::BehaviorState::Success;
+		return Elite::BehaviorState::Failure;
 	}
 
 	Elite::BehaviorState LootFOV(Elite::Blackboard* pBlackboard)
@@ -86,7 +78,7 @@ namespace  BT_Actions
 			return Elite::BehaviorState::Failure;
 		}
 
-		auto agentInfo = pInterface->Agent_GetInfo();
+		const auto agentInfo = pInterface->Agent_GetInfo();
 
 
 
@@ -156,7 +148,7 @@ namespace  BT_Actions
 			pSteeringBh->Seek(target);
 			return Elite::BehaviorState::Success;
 		}
-
+		return Elite::BehaviorState::Failure;
 	}
 
 	Elite::BehaviorState ShootZombieOrRun(Elite::Blackboard* pBlackboard)
@@ -177,7 +169,7 @@ namespace  BT_Actions
 
 		EntityInfo closestEnemy{};
 
-		for (int i{ 0 }; i < pEntitiesInFOV->size(); ++i)
+		for (UINT i{ 0 }; i < pEntitiesInFOV->size(); ++i)
 		{
 			if (pEntitiesInFOV->at(i).Type == eEntityType::ENEMY)
 			{
@@ -212,40 +204,26 @@ namespace  BT_Actions
 	Elite::BehaviorState GoInsideHouse(Elite::Blackboard* pblackboard)
 	{
 		std::vector<HouseInfo>* pHousesInPov{ nullptr };
+		SteeringBehavior* pSteeringBh{ nullptr };
 		SteeringPlugin_Output* pSteeringOutputData{ nullptr };
 		IExamInterface* pInterface{ nullptr };
-		AgentInfo* agentInfo{ nullptr };
 
-		if (!pblackboard->GetData("SteeringBehavior", pSteeringOutputData) || pSteeringOutputData == nullptr)
+		if (!pblackboard->GetData("SteeringOutput", pSteeringOutputData) || pSteeringOutputData == nullptr)
+			return Elite::BehaviorState::Failure;
+		if (!pblackboard->GetData("SteeringBehavior", pSteeringBh) || pSteeringBh == nullptr)
 			return Elite::BehaviorState::Failure;
 		if (!pblackboard->GetData("HouseInFov", pHousesInPov) || pHousesInPov == nullptr)
-			return Elite::BehaviorState::Failure;
-		if (!pblackboard->GetData("AgentInfo", agentInfo) || agentInfo == nullptr)
 			return Elite::BehaviorState::Failure;
 		if (!pblackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 			return Elite::BehaviorState::Failure;
 
-		for (const auto& house : *pHousesInPov)
-		{
-			//pSteeringBh->Seek(house.Center);
+		auto houseInView = pHousesInPov[0];
+		auto agentInfo = pInterface->Agent_GetInfo();
+		auto target = houseInView[0].Center;
 
-			auto houseInView = pHousesInPov[0];
-
-			auto checkpointLocation = house.Center;
-
-			checkpointLocation = pInterface->NavMesh_GetClosestPathPoint(checkpointLocation);
-			pSteeringOutputData->LinearVelocity = checkpointLocation - agentInfo->Position; //Desired Velocity
-			pSteeringOutputData->LinearVelocity.Normalize(); //Normalize Desired Velocity
-			pSteeringOutputData->LinearVelocity *= agentInfo->MaxLinearSpeed;
-			if (Elite::Distance(agentInfo->Position, checkpointLocation) <= 2)
-			{
-				pSteeringOutputData->AutoOrient = false;
-				pSteeringOutputData->AngularVelocity = 1.f;
-				return Elite::BehaviorState::Success;
-			}
-			Elite::BehaviorState::Failure;
-		}
-		
+		pSteeringBh->Seek(target);
+			
+		return Elite::BehaviorState::Success;
 	}
 }
 namespace BT_Conditions
@@ -259,7 +237,7 @@ namespace BT_Conditions
 			return false;
 
 
-		for (int i{ 0 }; i < pEntitiesInFOV->size(); ++i)
+		for (UINT i{ 0 }; i < pEntitiesInFOV->size(); ++i)
 		{
 			if (pEntitiesInFOV->at(i).Type == eEntityType::ENEMY)
 			{
@@ -272,16 +250,15 @@ namespace BT_Conditions
 
 	bool IsHouseInFOV(Elite::Blackboard* pBlackboard)
 	{
-		IExamInterface* pInterface{ nullptr };
+		//IExamInterface* pInterface{ nullptr };
 		std::vector<HouseInfo>* pHousesInFOV{ nullptr };
 
-		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
-			return false;
+		//if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
+		//	return false;
 
 		if (!pBlackboard->GetData("HouseInFov", pHousesInFOV) || pHousesInFOV == nullptr)
 			return false;
-
-
+		
 		return pHousesInFOV->size() > 0;
 	}
 
@@ -342,10 +319,11 @@ namespace BT_Conditions
 		{
 			return InterFace->Inventory_GetItem(1, item);
 		}
-		else if(!InterFace->Inventory_GetItem(1, item))
+		else if (!InterFace->Inventory_GetItem(1, item))
 		{
 			return InterFace->Inventory_GetItem(1, item);
 		}
+		else return false;
 	}
 
 	bool IsPurgeZoneInFOV(Elite::Blackboard* pBlackboard)
@@ -368,6 +346,21 @@ namespace BT_Conditions
 	bool returnTrue(Elite::Blackboard* pBlackboard)
 	{
 		return true;
+	}
+
+	bool AgentInHouse(Elite::Blackboard* pBlackboard)
+	{
+		IExamInterface* interFace{ nullptr };
+
+		if (!pBlackboard->GetData("InterFace", interFace) || interFace == nullptr)
+			return false;
+
+		if(interFace->Agent_GetInfo().IsInHouse)
+		{
+			return true;
+		}
+
+		return false;
 	}
 }
 
