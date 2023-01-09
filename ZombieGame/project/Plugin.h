@@ -13,14 +13,6 @@ class Plugin :public IExamPlugin
 {
 public:
 
-	enum Steeringstate
-	{
-		seek,
-		flee,
-		face,
-		evade
-	};
-
 	Plugin() {};
 	virtual ~Plugin() {};
 
@@ -50,15 +42,15 @@ private:
 
 	UINT m_InventorySlot = 0;
 
-	Elite::Blackboard* m_pBlackboard;
+	Elite::Blackboard* m_pBlackboard = nullptr;
 
-	SteeringBehavior* m_pSteeringBehavior;
-	SteeringPlugin_Output* m_pSteeringOutputData;
+	SteeringBehavior* m_pSteeringBehavior = nullptr;
+	SteeringPlugin_Output* m_pSteeringOutputData = nullptr;
 
-	Elite::BehaviorTree* m_pBehaviorTree;
+	Elite::BehaviorTree* m_pBehaviorTree = nullptr;
 
-	std::vector<EntityInfo>* m_pEntitiesInFOV;
-	std::vector<HouseInfo>* m_pHousesInFOV;
+	std::vector<EntityInfo>* m_pEntitiesInFOV = nullptr;
+	std::vector<HouseInfo>* m_pHousesInFOV = nullptr;
 };
 
 //ENTRY

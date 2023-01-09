@@ -30,52 +30,59 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pBlackboard = new Elite::Blackboard();
 	m_pBlackboard->AddData("InterFace", m_pInterface);
 	m_pBlackboard->AddData("SteeringBehavior", m_pSteeringBehavior);
-	m_pBlackboard->AddData("AgentInfo", m_pInterface->Agent_GetInfo());
 	m_pBlackboard->AddData("EntityInFov", m_pEntitiesInFOV);
 	m_pBlackboard->AddData("HouseInFov", m_pHousesInFOV);
+	m_pBlackboard->AddData("SteeringOutput", m_pSteeringOutputData);
 
 	m_pBehaviorTree = new Elite::BehaviorTree(m_pBlackboard,
 		new BehaviorSelector
 		(
 			{
-				new BehaviorSequence												 
-				(																	 
-					{																 
-						// Is PurgeZone in Fov													
-						new BehaviorConditional(&BT_Conditions::IsPurgeZoneInFOV),	 
-						// Run from Purgezone													
-						new BehaviorAction(&BT_Actions::ChangeToFlee)				 
-					}																 
-				), new BehaviorSequence												 
-				(																	 
-					{																 
-						//Is Enemy in Fov														
-						new BehaviorConditional(&BT_Conditions::IsEnemyInFOV),		 
-																					 
-						new BehaviorSelector										 
-						(															 
-							{														 
-								new BehaviorConditional(&BT_Conditions::HaveGun),	 
-								new BehaviorAction(&BT_Actions::ShootZombieOrRun)
-										   }										 
-						),															 
-						new BehaviorSequence										 
-								(													 
-									{
-										new BehaviorConditional(&BT_Conditions::IsHouseInFOV),
-										new BehaviorAction(&BT_Actions::GoInsideHouse)
-									  }												 
-										),											 
-					}																					
-				),																						
-																										
-			}
-	));
-	
-		
+				 new BehaviorSequence
+				 (
+				   {
+						 // Is PurgeZone in Fov													
+						 new BehaviorConditional(&BT_Conditions::IsPurgeZoneInFOV),
+						 // Run from Purgezone													
+						 new BehaviorAction(&BT_Actions::ChangeToFlee)
+				   }
+				 ),
+				 new BehaviorSequence
+				 (
+				   {
+						 //Is Enemy in Fov														
+						 new BehaviorConditional(&BT_Conditions::IsEnemyInFOV),
 
-	
+						 new BehaviorSelector
+						 (
+							{
+							 new BehaviorConditional(&BT_Conditions::HaveGun),
+							 new BehaviorAction(&BT_Actions::ShootZombieOrRun)
+							}
+						 ),
+				   }
+				 ),
+							 new BehaviorSequence
+							 (
+								 {
+									 new BehaviorConditional(&BT_Conditions::IsHouseInFOV),
+									 new BehaviorAction(&BT_Actions::GoInsideHouse)
+								 }
+							 ),
+							 new BehaviorSequence
+							 (
+								{
+									 new BehaviorConditional(&BT_Conditions::AgentInHouse),
+									 new BehaviorAction(&BT_Actions::LootFOV)
+								}
+							 )
+			}
+		)
+	);
+					
+			
 }
+
 
 //Called only once
 void Plugin::DllInit()
@@ -106,7 +113,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.SpawnPurgeZonesOnMiddleClick = true;
 	params.PrintDebugMessages = true;
 	params.ShowDebugItemNames = true;
-	params.Seed = 16;	//16
+	params.Seed = 36;	//16
 }
 
 //Only Active in DEBUG Mode
