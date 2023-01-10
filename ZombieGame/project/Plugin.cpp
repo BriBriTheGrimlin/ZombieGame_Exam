@@ -63,33 +63,37 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 				   }
 				 ),
 				new BehaviorSequence(
-	 {
-					 new BehaviorSequence
-					 	 (
-					 		 {
-					 			 new BehaviorConditional(&BT_Conditions::IsHouseInFOV),
-					 			 new BehaviorAction(&BT_Actions::GoInsideHouse)
-					 		 }
-					 	 ),
-					  new BehaviorSequence
-					 	 (
-					 		{
-					 			 new BehaviorConditional(&BT_Conditions::AgentInHouse),
-					 			 new BehaviorAction(&BT_Actions::CheckHouse)
-					 		}
-					 	 ),
-					
-
+					{
+						 new BehaviorSequence
+						 	 (
+						 		{
+						 		 new BehaviorConditional(&BT_Conditions::IsHouseInFOV),
+						 		 new BehaviorAction(&BT_Actions::GoInsideHouse)
+						 		}
+						 	 ),
+						 new BehaviorSequence
+					 		 (
+					 		 	{
+					 		 		new BehaviorConditional(&BT_Conditions::AgentInHouse),
+					 		 		new BehaviorAction(&BT_Actions::CheckHouse)
+					 		 	}
+					 		 ),
 					}
-									),
-				 //new BehaviorAction(&BT_Actions::Explore),
-					new BehaviorSequence
+				),
+			new BehaviorSequence(
+				{
+					new BehaviorInvertConditional(&BT_Conditions::IsHouseInFOV),
+					new BehaviorAction(&BT_Actions::Explore)
+				}
+				),
+			 new BehaviorSequence
 							 (
-				 {
-									new BehaviorConditional(&BT_Conditions::LootInFOV),
-									new BehaviorAction(&BT_Actions::LootFOV)
-								}
+							 	{
+							 		new BehaviorConditional(&BT_Conditions::LootInFOV),
+							 		new BehaviorAction(&BT_Actions::LootFOV)
+							 	}
 							 ),
+					
 
 
 
