@@ -73,9 +73,16 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 							 (
 								{
 									 new BehaviorConditional(&BT_Conditions::AgentInHouse),
-									 new BehaviorAction(&BT_Actions::LootFOV)
+									 new BehaviorAction(&BT_Actions::CheckHouse)
 								}
-							 )
+							 ),
+							// new BehaviorSequence
+							// (
+							//	{
+							//		new BehaviorConditional(&BT_Conditions::LootInFOV),
+							//		new BehaviorAction(&BT_Actions::LootFOV)
+							//	}
+							// )
 			}
 		)
 	);

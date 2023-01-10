@@ -64,13 +64,13 @@ namespace  BT_Actions
 		SteeringBehavior* pSteeringBh{};
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
 
-		if (pBlackboard->GetData("InterFace", pInterface) == false || pInterface == nullptr)
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 			return Elite::BehaviorState::Failure;
 
-		if (pBlackboard->GetData("SteeringBehavior", pSteeringBh) == false || pSteeringBh == nullptr)
+		if (!pBlackboard->GetData("SteeringBehavior", pSteeringBh) || pSteeringBh == nullptr)
 			return Elite::BehaviorState::Failure;
 
-		if (pBlackboard->GetData("EntityInFov", pEntitiesInFOV) == false || pEntitiesInFOV == nullptr)
+		if (!pBlackboard->GetData("EntityInFov", pEntitiesInFOV) || pEntitiesInFOV == nullptr)
 			return Elite::BehaviorState::Failure;
 
 		if (pEntitiesInFOV->empty())
@@ -83,7 +83,6 @@ namespace  BT_Actions
 
 
 		EntityInfo closestItem{};
-		closestItem.Location.x = 1000.f;
 		for (const auto& entity : *pEntitiesInFOV)
 		{
 			if ((closestItem.Location - pInterface->Agent_GetInfo().Position).MagnitudeSquared() < agentInfo.GrabRange * agentInfo.GrabRange)
@@ -98,13 +97,13 @@ namespace  BT_Actions
 
 						pInterface->Item_Grab(entity, item);
 						pInterface->Inventory_AddItem(0, item);
-						return Elite::BehaviorState::Running;
+						return Elite::BehaviorState::Success;
 					}
 					if (item.Type == eItemType::PISTOL)
 					{
 						pInterface->Item_Grab(entity, item);
 						pInterface->Inventory_AddItem(1, item);
-						return Elite::BehaviorState::Running;
+						return Elite::BehaviorState::Success;
 					}
 					if (item.Type == eItemType::FOOD)
 					{
@@ -112,13 +111,18 @@ namespace  BT_Actions
 						{
 							pInterface->Item_Grab(entity, item);
 							pInterface->Inventory_AddItem(2, item);
-							return Elite::BehaviorState::Running;
+							return Elite::BehaviorState::Success;
 						}
-						if (pInterface->Inventory_GetItem(2, item))
+						else if (pInterface->Inventory_GetItem(2, item))
 						{
 							pInterface->Item_Grab(entity, item);
 							pInterface->Inventory_AddItem(3, item);
-							return Elite::BehaviorState::Running;
+							return Elite::BehaviorState::Success;
+						}
+						else
+						{
+							pInterface->Item_Destroy(entity);
+							return Elite::BehaviorState::Success;
 						}
 					}
 					if (item.Type == eItemType::MEDKIT)
@@ -127,18 +131,18 @@ namespace  BT_Actions
 						{
 							pInterface->Item_Grab(entity, item);
 							pInterface->Inventory_AddItem(4, item);
-							return Elite::BehaviorState::Running;
+							return Elite::BehaviorState::Success;
 						}
 						else
 						{
 							pInterface->Item_Destroy(entity);
-							return Elite::BehaviorState::Running;
+							return Elite::BehaviorState::Success;
 						}
 					}
 					if (item.Type == eItemType::GARBAGE)
 					{
 						pInterface->Item_Destroy(entity);
-						return Elite::BehaviorState::Running;
+						return Elite::BehaviorState::Success;
 					}
 				}
 			}
@@ -168,22 +172,13 @@ namespace  BT_Actions
 			return Elite::BehaviorState::Failure;
 
 		EntityInfo closestEnemy{};
-
-		for (UINT i{ 0 }; i < pEntitiesInFOV->size(); ++i)
-		{
-			if (pEntitiesInFOV->at(i).Type == eEntityType::ENEMY)
-			{
-				closestEnemy = pEntitiesInFOV->at(i);
-			}
-		}
 		
 		auto agentInfo = pInterface->Agent_GetInfo();
 		auto angleBuffer{ 0.10 };
 		Elite::Vector2 desiredDirection = (closestEnemy.Location - agentInfo.Position);
-		// Check if we're oriented to the closest enemy
+
 		if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleBuffer)
 		{
-			// If we're oriented to the closest enemy, shoot it
 			ItemInfo item{};
 			if (pInterface->Inventory_GetItem(0, item))
 			{
@@ -201,29 +196,82 @@ namespace  BT_Actions
 		return Elite::BehaviorState::Success;
 	}
 
-	Elite::BehaviorState GoInsideHouse(Elite::Blackboard* pblackboard)
+	Elite::BehaviorState GoInsideHouse(Elite::Blackboard* pBlackboard)
 	{
 		std::vector<HouseInfo>* pHousesInPov{ nullptr };
 		SteeringBehavior* pSteeringBh{ nullptr };
 		SteeringPlugin_Output* pSteeringOutputData{ nullptr };
 		IExamInterface* pInterface{ nullptr };
 
-		if (!pblackboard->GetData("SteeringOutput", pSteeringOutputData) || pSteeringOutputData == nullptr)
+		if (!pBlackboard->GetData("SteeringOutput", pSteeringOutputData) || pSteeringOutputData == nullptr)
 			return Elite::BehaviorState::Failure;
-		if (!pblackboard->GetData("SteeringBehavior", pSteeringBh) || pSteeringBh == nullptr)
+		if (!pBlackboard->GetData("SteeringBehavior", pSteeringBh) || pSteeringBh == nullptr)
 			return Elite::BehaviorState::Failure;
-		if (!pblackboard->GetData("HouseInFov", pHousesInPov) || pHousesInPov == nullptr)
+		if (!pBlackboard->GetData("HouseInFov", pHousesInPov) || pHousesInPov == nullptr)
 			return Elite::BehaviorState::Failure;
-		if (!pblackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 			return Elite::BehaviorState::Failure;
 
 		auto houseInView = pHousesInPov[0];
 		auto agentInfo = pInterface->Agent_GetInfo();
 		auto target = houseInView[0].Center;
 
-		pSteeringBh->Seek(target);
+
+		if ((Elite::Distance(agentInfo.Position, target) <= 3) == false)
+		{
+			pSteeringBh->Seek(target);
+			return Elite::BehaviorState::Success;
+		}
+		else return Elite::BehaviorState::Failure;
+	}
+
+	Elite::BehaviorState CheckHouse(Elite::Blackboard* pBlackboard)
+	{
+		std::vector<HouseInfo>* pHousesInPov{ nullptr };
+		SteeringPlugin_Output* pSteeringOutput{ nullptr };
+		IExamInterface* pInterface{ nullptr };
+		SteeringBehavior* pSteeringBh{ nullptr };
+
+		if (!pBlackboard->GetData("SteeringOutput", pSteeringOutput) || pSteeringOutput == nullptr)
+			return Elite::BehaviorState::Failure;
+
+		if (!pBlackboard->GetData("HouseInFov", pHousesInPov) || pHousesInPov == nullptr)
+			return Elite::BehaviorState::Failure;
+
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
+			return Elite::BehaviorState::Failure;
+
+		if (!pBlackboard->GetData("SteeringBehavior", pSteeringBh) || pSteeringBh == nullptr)
+			return Elite::BehaviorState::Failure;
+
+		HouseInfo houseInView = *pHousesInPov->begin();
+		auto agentInfo = pInterface->Agent_GetInfo();
+
+		auto targetRightTop = Elite::Vector2{ houseInView.Center.x + houseInView.Size.x /2 - 3,  houseInView.Center.y + houseInView.Size.y / 2 - 3 };
+		auto targetLeftBottom = Elite::Vector2{ houseInView.Center.x - houseInView.Size.x / 2,  houseInView.Center.y - houseInView.Size.y / 2 };
+
+		bool wentRightTop = false;
+		bool wentLeftDown = false;
+
+		pInterface->Draw_Circle(targetRightTop, 1, { 0,0,1 });
+
+		if ((Elite::Distance(agentInfo.Position, targetRightTop) <= 1) == false && !wentRightTop)
+		{
+			pSteeringBh->Seek(targetRightTop);
+			wentRightTop = true;
+			return Elite::BehaviorState::Running;
 			
-		return Elite::BehaviorState::Success;
+		}
+		else if ((Elite::Distance(agentInfo.Position, targetRightTop) <= 3) == false && !wentLeftDown && wentRightTop)
+		{
+			pSteeringBh->Seek(targetLeftBottom);
+			wentLeftDown = true;
+			return Elite::BehaviorState::Success;
+			
+		}
+		std::cout << wentRightTop << '\n';
+		
+		return Elite::BehaviorState::Failure;
 	}
 }
 namespace BT_Conditions
@@ -250,11 +298,7 @@ namespace BT_Conditions
 
 	bool IsHouseInFOV(Elite::Blackboard* pBlackboard)
 	{
-		//IExamInterface* pInterface{ nullptr };
 		std::vector<HouseInfo>* pHousesInFOV{ nullptr };
-
-		//if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
-		//	return false;
 
 		if (!pBlackboard->GetData("HouseInFov", pHousesInFOV) || pHousesInFOV == nullptr)
 			return false;
@@ -264,13 +308,7 @@ namespace BT_Conditions
 
 	bool LootInFOV(Elite::Blackboard* pBlackboard)
 	{
-		IExamInterface* pInterface{ nullptr };
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
-
-		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
-		{
-			return false;
-		}
 		if (!pBlackboard->GetData("EntityInFov", pEntitiesInFOV) || pEntitiesInFOV == nullptr)
 		{
 			return false;
@@ -357,8 +395,9 @@ namespace BT_Conditions
 
 		if(interFace->Agent_GetInfo().IsInHouse)
 		{
+			
 			return true;
-		}
+;		}
 
 		return false;
 	}
