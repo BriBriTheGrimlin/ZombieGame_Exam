@@ -51,7 +51,7 @@ namespace  BT_Actions
 			{
 				PurgeZoneInfo purgeZone{};
 				pInterface->PurgeZone_GetInfo(entity, purgeZone);
-				pSteeringBh->Flee(purgeZone.Center, purgeZone.Radius);
+				pSteeringBh->Flee(purgeZone.Center, purgeZone.Radius + 10);
 				return Elite::BehaviorState::Success;
 			}
 		}
@@ -81,76 +81,88 @@ namespace  BT_Actions
 		const auto agentInfo = pInterface->Agent_GetInfo();
 
 
-
-		EntityInfo closestItem{};
 		for (const auto& entity : *pEntitiesInFOV)
 		{
-			if ((closestItem.Location - pInterface->Agent_GetInfo().Position).MagnitudeSquared() < agentInfo.GrabRange * agentInfo.GrabRange)
-			{
-				if (entity.Type == eEntityType::ITEM)
-				{
+				pSteeringBh->Seek(pEntitiesInFOV->begin()->Location);
 					ItemInfo item{};
 					pInterface->Item_GetInfo(entity, item);
 
-					if (item.Type == eItemType::SHOTGUN)
-					{
+					//pSteeringBh->Seek(item.Location);
 
-						pInterface->Item_Grab(entity, item);
-						pInterface->Inventory_AddItem(0, item);
-						return Elite::BehaviorState::Success;
-					}
-					if (item.Type == eItemType::PISTOL)
+					if (agentInfo.Position.Distance(item.Location) <= agentInfo.GrabRange)
 					{
-						pInterface->Item_Grab(entity, item);
-						pInterface->Inventory_AddItem(1, item);
-						return Elite::BehaviorState::Success;
-					}
-					if (item.Type == eItemType::FOOD)
-					{
-						if (!pInterface->Inventory_GetItem(2, item))
+						if (item.Type == eItemType::SHOTGUN)
 						{
-							pInterface->Item_Grab(entity, item);
-							pInterface->Inventory_AddItem(2, item);
-							return Elite::BehaviorState::Success;
+							if (!pInterface->Inventory_GetItem(0, item))
+							{
+								pInterface->Item_Grab(entity, item);
+								pInterface->Inventory_AddItem(0, item);
+								return Elite::BehaviorState::Success;
+							}
+							else
+							{
+								pInterface->Item_Destroy(entity);
+							}
+							
 						}
-						else if (pInterface->Inventory_GetItem(2, item))
+						if (item.Type == eItemType::PISTOL)
 						{
-							pInterface->Item_Grab(entity, item);
-							pInterface->Inventory_AddItem(3, item);
-							return Elite::BehaviorState::Success;
+							if (!pInterface->Inventory_GetItem(1, item))
+							{
+								pInterface->Item_Grab(entity, item);
+								pInterface->Inventory_AddItem(1, item);
+								return Elite::BehaviorState::Success;
+							}
+							else
+							{
+								pInterface->Item_Destroy(entity);
+							}
 						}
-						else
+						if (item.Type == eItemType::FOOD)
+						{
+							if (!pInterface->Inventory_GetItem(2, item))
+							{
+								pInterface->Item_Grab(entity, item);
+								pInterface->Inventory_AddItem(2, item);
+								return Elite::BehaviorState::Success;
+							}
+							else if (pInterface->Inventory_GetItem(2, item))
+							{
+								pInterface->Item_Grab(entity, item);
+								pInterface->Inventory_AddItem(3, item);
+								return Elite::BehaviorState::Running;
+							}
+							else
+							{
+								pInterface->Item_Destroy(entity);
+								return Elite::BehaviorState::Running;
+							}
+						}
+						if (item.Type == eItemType::MEDKIT)
+						{
+							if (!pInterface->Inventory_GetItem(4, item))
+							{
+								pInterface->Item_Grab(entity, item);
+								pInterface->Inventory_AddItem(4, item);
+								return Elite::BehaviorState::Success;
+							}
+							else
+							{
+								pInterface->Item_Destroy(entity);
+								return Elite::BehaviorState::Success;
+							}
+						}
+						if (item.Type == eItemType::GARBAGE)
 						{
 							pInterface->Item_Destroy(entity);
 							return Elite::BehaviorState::Success;
 						}
 					}
-					if (item.Type == eItemType::MEDKIT)
-					{
-						if (!pInterface->Inventory_GetItem(4, item))
-						{
-							pInterface->Item_Grab(entity, item);
-							pInterface->Inventory_AddItem(4, item);
-							return Elite::BehaviorState::Success;
-						}
-						else
-						{
-							pInterface->Item_Destroy(entity);
-							return Elite::BehaviorState::Success;
-						}
-					}
-					if (item.Type == eItemType::GARBAGE)
-					{
-						pInterface->Item_Destroy(entity);
-						return Elite::BehaviorState::Success;
-					}
-				}
+			if(pEntitiesInFOV->empty())
+			{
+				return Elite::BehaviorState::Failure;
 			}
-			auto target = closestItem.Location;
-
-
-			pSteeringBh->Seek(target);
-			return Elite::BehaviorState::Success;
+			return Elite::BehaviorState::Failure;
 		}
 		return Elite::BehaviorState::Failure;
 	}
@@ -172,7 +184,7 @@ namespace  BT_Actions
 			return Elite::BehaviorState::Failure;
 
 		EntityInfo closestEnemy{};
-		
+		closestEnemy = pEntitiesInFOV->begin()[0];
 		auto agentInfo = pInterface->Agent_GetInfo();
 		auto angleBuffer{ 0.10 };
 		Elite::Vector2 desiredDirection = (closestEnemy.Location - agentInfo.Position);
@@ -185,15 +197,20 @@ namespace  BT_Actions
 				pInterface->Inventory_UseItem(0);
 				return Elite::BehaviorState::Success;
 			}
-			else if( pInterface->Inventory_GetItem(1,item))
+			if( pInterface->Inventory_GetItem(1,item))
 			{
 				pInterface->Inventory_UseItem(1);
 				return Elite::BehaviorState::Success;
 			}
-			return Elite::BehaviorState::Failure;
+			
+		}
+		else
+		{
+			pSteeringBh->Flee(closestEnemy.Location, 15);
+			return Elite::BehaviorState::Success;
 		}
 
-		return Elite::BehaviorState::Success;
+		return Elite::BehaviorState::Failure;
 	}
 
 	Elite::BehaviorState GoInsideHouse(Elite::Blackboard* pBlackboard)
@@ -212,17 +229,30 @@ namespace  BT_Actions
 		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 			return Elite::BehaviorState::Failure;
 
-		auto houseInView = pHousesInPov[0];
+		if (pHousesInPov->empty())
+			return Elite::BehaviorState::Failure;
+
+		auto target = pHousesInPov->begin()->Center;
+
 		auto agentInfo = pInterface->Agent_GetInfo();
-		auto target = houseInView[0].Center;
+
+		
 
 
-		if ((Elite::Distance(agentInfo.Position, target) <= 3) == false)
+		pInterface->Draw_Circle(target, 3, { 0,0,1 });
+		
+		
+		if ((Elite::Distance(agentInfo.Position, target) >= 3))
 		{
 			pSteeringBh->Seek(target);
+		}
+		if ((Elite::Distance(agentInfo.Position, target) <= 3))
+		{
+			pSteeringOutputData->LinearVelocity = Elite::Vector2{ 0,0 };
 			return Elite::BehaviorState::Success;
 		}
-		else return Elite::BehaviorState::Failure;
+		
+		return Elite::BehaviorState::Failure;
 	}
 
 	Elite::BehaviorState CheckHouse(Elite::Blackboard* pBlackboard)
@@ -244,32 +274,56 @@ namespace  BT_Actions
 		if (!pBlackboard->GetData("SteeringBehavior", pSteeringBh) || pSteeringBh == nullptr)
 			return Elite::BehaviorState::Failure;
 
-		HouseInfo houseInView = *pHousesInPov->begin();
-		auto agentInfo = pInterface->Agent_GetInfo();
+		
 
-		auto targetRightTop = Elite::Vector2{ houseInView.Center.x + houseInView.Size.x /2 - 3,  houseInView.Center.y + houseInView.Size.y / 2 - 3 };
-		auto targetLeftBottom = Elite::Vector2{ houseInView.Center.x - houseInView.Size.x / 2,  houseInView.Center.y - houseInView.Size.y / 2 };
+		//HouseInfo houseInView = *pHousesInPov->begin();
+		//auto agentInfo = pInterface->Agent_GetInfo();
+		//
+		//auto targetRightTop = Elite::Vector2{ houseInView.Center.x + houseInView.Size.x /2-3,  houseInView.Center.y + houseInView.Size.y / 2 -3 };
+		//auto targetLeftBottom = Elite::Vector2{ houseInView.Center.x - houseInView.Size.x / 2,  houseInView.Center.y - houseInView.Size.y / 2 };
+		//
+		//pInterface->Draw_Circle(targetRightTop, 1, { 0,0,1 });
+		//
+		//if ((Elite::Distance(agentInfo.Position, targetRightTop) <= 1) == false && !wentRight)
+		//{
+		//	
+		//	std::cout << wentRight << '\n';
+		//	pBlackboard->ChangeData("TopRight", true);
+		//	pSteeringBh->Seek(targetRightTop);
+		//}
+		//else if ((Elite::Distance(agentInfo.Position, targetRightTop) <= 3) == false && !wentLeft && wentRight)
+		//{
+		//	pSteeringBh->Seek(targetLeftBottom);
+		//	wentLeft = true;
+		//	return Elite::BehaviorState::Success;
+		//	
+		//}
 
-		bool wentRightTop = false;
-		bool wentLeftDown = false;
+		pSteeringOutput->AutoOrient = false;
+		pSteeringOutput->LinearVelocity = { 0,0 };
+		pSteeringOutput->AngularVelocity = 1.0f;
+		
+		
+		return Elite::BehaviorState::Failure;
+	}
 
-		pInterface->Draw_Circle(targetRightTop, 1, { 0,0,1 });
+	Elite::BehaviorState Explore(Elite::Blackboard* pBlackboard)
+	{
+		IExamInterface* pInterFace{ nullptr };
+		SteeringBehavior* pSteeringBh{ nullptr };
 
-		if ((Elite::Distance(agentInfo.Position, targetRightTop) <= 1) == false && !wentRightTop)
-		{
-			pSteeringBh->Seek(targetRightTop);
-			wentRightTop = true;
-			return Elite::BehaviorState::Running;
-			
-		}
-		else if ((Elite::Distance(agentInfo.Position, targetRightTop) <= 3) == false && !wentLeftDown && wentRightTop)
-		{
-			pSteeringBh->Seek(targetLeftBottom);
-			wentLeftDown = true;
-			return Elite::BehaviorState::Success;
-			
-		}
-		std::cout << wentRightTop << '\n';
+		if (!pBlackboard->GetData("InterFace", pInterFace) || pInterFace == nullptr)
+			return Elite::BehaviorState::Failure;
+		if (pBlackboard->GetData("SteeringBehavior", pSteeringBh) == false || pSteeringBh == nullptr)
+			return Elite::BehaviorState::Failure;
+
+		WorldInfo worldInfo = pInterFace->World_GetInfo();
+
+		Elite::Vector2 bottomLeft{ worldInfo.Center.x - worldInfo.Dimensions.x / 4, worldInfo.Center.y - worldInfo.Dimensions.y / 3 };
+
+		pInterFace->Draw_Circle(bottomLeft, 5, { 1,0,0 });
+
+		pSteeringBh->Seek(bottomLeft);
 		
 		return Elite::BehaviorState::Failure;
 	}
@@ -353,13 +407,9 @@ namespace BT_Conditions
 		}
 
 		ItemInfo item{};
-		if (!InterFace->Inventory_GetItem(0, item))
+		if (InterFace->Inventory_GetItem(0, item))
 		{
-			return InterFace->Inventory_GetItem(1, item);
-		}
-		else if (!InterFace->Inventory_GetItem(1, item))
-		{
-			return InterFace->Inventory_GetItem(1, item);
+			return InterFace->Inventory_GetItem(0, item);
 		}
 		else return false;
 	}
@@ -402,5 +452,7 @@ namespace BT_Conditions
 		return false;
 	}
 }
+
+	
 
 #endif

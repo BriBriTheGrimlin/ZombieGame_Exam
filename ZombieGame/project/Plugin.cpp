@@ -62,30 +62,45 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 						 ),
 				   }
 				 ),
-							 new BehaviorSequence
+				new BehaviorSequence(
+	 {
+					 new BehaviorSequence
+					 	 (
+					 		 {
+					 			 new BehaviorConditional(&BT_Conditions::IsHouseInFOV),
+					 			 new BehaviorAction(&BT_Actions::GoInsideHouse)
+					 		 }
+					 	 ),
+					  new BehaviorSequence
+					 	 (
+					 		{
+					 			 new BehaviorConditional(&BT_Conditions::AgentInHouse),
+					 			 new BehaviorAction(&BT_Actions::CheckHouse)
+					 		}
+					 	 ),
+					
+
+					}
+									),
+				 //new BehaviorAction(&BT_Actions::Explore),
+					new BehaviorSequence
 							 (
-								 {
-									 new BehaviorConditional(&BT_Conditions::IsHouseInFOV),
-									 new BehaviorAction(&BT_Actions::GoInsideHouse)
-								 }
-							 ),
-							 new BehaviorSequence
-							 (
-								{
-									 new BehaviorConditional(&BT_Conditions::AgentInHouse),
-									 new BehaviorAction(&BT_Actions::CheckHouse)
+				 {
+									new BehaviorConditional(&BT_Conditions::LootInFOV),
+									new BehaviorAction(&BT_Actions::LootFOV)
 								}
 							 ),
-							// new BehaviorSequence
-							// (
-							//	{
-							//		new BehaviorConditional(&BT_Conditions::LootInFOV),
-							//		new BehaviorAction(&BT_Actions::LootFOV)
-							//	}
-							// )
+
+
+
+
+
+
+
 			}
 		)
-	);
+
+		);
 					
 			
 }
@@ -120,7 +135,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.SpawnPurgeZonesOnMiddleClick = true;
 	params.PrintDebugMessages = true;
 	params.ShowDebugItemNames = true;
-	params.Seed = 36;	//16
+	params.Seed = 5;	//16
 }
 
 //Only Active in DEBUG Mode

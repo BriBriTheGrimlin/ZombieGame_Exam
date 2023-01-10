@@ -51,6 +51,9 @@ private:
 
 	std::vector<EntityInfo>* m_pEntitiesInFOV = nullptr;
 	std::vector<HouseInfo>* m_pHousesInFOV = nullptr;
+
+	std::vector<HouseInfo>* m_pHousesChecked;
+
 };
 
 //ENTRY
