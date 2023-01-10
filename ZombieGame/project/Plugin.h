@@ -4,10 +4,12 @@
 #include "Exam_HelperStructs.h"
 #include "SteeringBehaviors.h"
 #include "Behaviors.h"
+#include "MyGlobals.h"
 
 class IBaseInterface;
 class IExamInterface;
 class SteeringBehavior;
+class MyGlobals;
 
 class Plugin :public IExamPlugin
 {
@@ -52,8 +54,11 @@ private:
 	std::vector<EntityInfo>* m_pEntitiesInFOV = nullptr;
 	std::vector<HouseInfo>* m_pHousesInFOV = nullptr;
 
-	std::vector<HouseInfo>* m_pHousesChecked;
+	std::vector<HouseInfo>* m_pHousesChecked = nullptr;
 
+	HouseInfo* m_pCurrentHouse = nullptr;
+
+	GlobalsStruct* m_pMyGlobals = nullptr;
 };
 
 //ENTRY

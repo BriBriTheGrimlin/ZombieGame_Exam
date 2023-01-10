@@ -19,8 +19,8 @@ void SteeringBehavior::Seek(const Elite::Vector2 target) const
 	auto nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(target);
 
 	m_pSteeringbh->AutoOrient = true;
-	m_pSteeringbh->LinearVelocity = nextTargetPos - agentInfo.Position; //Desired Velocity
-	m_pSteeringbh->LinearVelocity.Normalize();						  //Normalize Desired Velocity
+	m_pSteeringbh->LinearVelocity = nextTargetPos - agentInfo.Position;
+	m_pSteeringbh->LinearVelocity.Normalize();						  
 	m_pSteeringbh->LinearVelocity *= agentInfo.MaxLinearSpeed;
 }
 

@@ -24,7 +24,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pSteeringOutputData = new SteeringPlugin_Output();
 	m_pEntitiesInFOV = new std::vector<EntityInfo>();
 	m_pHousesInFOV = new std::vector<HouseInfo>();
-
+	m_pMyGlobals = new GlobalsStruct();
 	m_pSteeringBehavior = new SteeringBehavior(m_pInterface, m_pSteeringOutputData);
 
 	m_pBlackboard = new Elite::Blackboard();
@@ -33,6 +33,8 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pBlackboard->AddData("EntityInFov", m_pEntitiesInFOV);
 	m_pBlackboard->AddData("HouseInFov", m_pHousesInFOV);
 	m_pBlackboard->AddData("SteeringOutput", m_pSteeringOutputData);
+	m_pBlackboard->AddData("Currenthouse", m_pCurrentHouse);
+	m_pBlackboard->AddData("Globals", m_pMyGlobals);
 
 	m_pBehaviorTree = new Elite::BehaviorTree(m_pBlackboard,
 		new BehaviorSelector
@@ -68,6 +70,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 						 	 (
 						 		{
 						 		 new BehaviorConditional(&BT_Conditions::IsHouseInFOV),
+								// new BehaviorInvertConditional( &BT_Conditions::AgentInHouse),
 						 		 new BehaviorAction(&BT_Actions::GoInsideHouse)
 						 		}
 						 	 ),
@@ -139,7 +142,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.SpawnPurgeZonesOnMiddleClick = true;
 	params.PrintDebugMessages = true;
 	params.ShowDebugItemNames = true;
-	params.Seed = 5;	//16
+	params.Seed = 2;	//16
 }
 
 //Only Active in DEBUG Mode
@@ -217,6 +220,9 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
 	auto agentInfo = m_pInterface->Agent_GetInfo();
 
+	*m_pHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
+	*m_pEntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
+
 	m_pBehaviorTree->Update(dt);
 
 	//Use the navmesh to calculate the next navmesh point
@@ -225,8 +231,7 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	//auto nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(m_Target); //Uncomment this to use mouse position as guidance
 
-	*m_pHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
-	*m_pEntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
+	
 	/*
 	bool seenItem{ false };
 	bool seenEnemy{ false };
@@ -478,9 +483,9 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 void Plugin::Render(float dt) const
 {
 	//This Render function should only contain calls to Interface->Draw_... functions
-	m_pInterface->Draw_SolidCircle(m_Target, .7f, { 0,0 }, { 1, 0, 0 });
+	//m_pInterface->Draw_SolidCircle(m_Target, .7f, { 0,0 }, { 1, 0, 0 });
 
-	m_pInterface->Draw_Circle(m_nextTargetPos, 3, { 1,0,0 });
+	//m_pInterface->Draw_Circle(m_nextTargetPos, 3, { 1,0,0 });
 	
 }
 

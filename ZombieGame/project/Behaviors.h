@@ -7,6 +7,7 @@
 #include "Exam_HelperStructs.h"
 #include "EBehaviorTree.h"
 #include "SteeringBehaviors.h"
+#include "MyGlobals.h"
 
 //-----------------------------------------------------------------
 // Behaviors
@@ -22,7 +23,7 @@ namespace  BT_Actions
 			return Elite::BehaviorState::Failure;
 		
 
-		Elite::Vector2 target{ -100,-100 };
+		Elite::Vector2 target{ 0,-100 };
 
 		pSteeringBh->Seek(target);
 		return Elite::BehaviorState::Success;
@@ -55,6 +56,8 @@ namespace  BT_Actions
 				return Elite::BehaviorState::Success;
 			}
 		}
+		
+		agentInfo.RunMode = false;
 		return Elite::BehaviorState::Failure;
 	}
 
@@ -195,11 +198,19 @@ namespace  BT_Actions
 			if (pInterface->Inventory_GetItem(0, item))
 			{
 				pInterface->Inventory_UseItem(0);
+				if (pInterface->Weapon_GetAmmo(item) <= 0)
+				{
+					pInterface->Inventory_RemoveItem(0);
+				}
 				return Elite::BehaviorState::Success;
 			}
 			if( pInterface->Inventory_GetItem(1,item))
 			{
 				pInterface->Inventory_UseItem(1);
+				if (pInterface->Weapon_GetAmmo(item) <= 0)
+				{
+					pInterface->Inventory_RemoveItem(1);
+				}
 				return Elite::BehaviorState::Success;
 			}
 			
@@ -219,6 +230,7 @@ namespace  BT_Actions
 		SteeringBehavior* pSteeringBh{ nullptr };
 		SteeringPlugin_Output* pSteeringOutputData{ nullptr };
 		IExamInterface* pInterface{ nullptr };
+		GlobalsStruct* pGlobals{ nullptr };
 
 		if (!pBlackboard->GetData("SteeringOutput", pSteeringOutputData) || pSteeringOutputData == nullptr)
 			return Elite::BehaviorState::Failure;
@@ -228,27 +240,28 @@ namespace  BT_Actions
 			return Elite::BehaviorState::Failure;
 		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 			return Elite::BehaviorState::Failure;
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return Elite::BehaviorState::Failure;
 
 		if (pHousesInPov->empty())
 			return Elite::BehaviorState::Failure;
 
-		auto target = pHousesInPov->begin()->Center;
+		Elite::Vector2 target = pGlobals->currentHouse.Center;
 
-		auto agentInfo = pInterface->Agent_GetInfo();
+		AgentInfo agentInfo = pInterface->Agent_GetInfo();
 
-		
+		pInterface->Draw_SolidCircle(target, 3, { 0,0 }, { 1,1,0 });
+		if(pGlobals->wentToCenter)
+			return Elite::BehaviorState::Success;
 
-
-		pInterface->Draw_Circle(target, 3, { 0,0,1 });
-		
-		
-		if ((Elite::Distance(agentInfo.Position, target) >= 3))
+		if ((Elite::Distance(agentInfo.Position, target) >= 3) && !pGlobals->wentToCenter)
 		{
 			pSteeringBh->Seek(target);
 		}
-		if ((Elite::Distance(agentInfo.Position, target) <= 3))
+		if ((Elite::Distance(agentInfo.Position, target) <= 3) && !pGlobals->wentToCenter)
 		{
 			pSteeringOutputData->LinearVelocity = Elite::Vector2{ 0,0 };
+			pGlobals->wentToCenter = true;
 			return Elite::BehaviorState::Success;
 		}
 		
@@ -261,6 +274,7 @@ namespace  BT_Actions
 		SteeringPlugin_Output* pSteeringOutput{ nullptr };
 		IExamInterface* pInterface{ nullptr };
 		SteeringBehavior* pSteeringBh{ nullptr };
+		GlobalsStruct* pGlobals{ nullptr };
 
 		if (!pBlackboard->GetData("SteeringOutput", pSteeringOutput) || pSteeringOutput == nullptr)
 			return Elite::BehaviorState::Failure;
@@ -274,34 +288,39 @@ namespace  BT_Actions
 		if (!pBlackboard->GetData("SteeringBehavior", pSteeringBh) || pSteeringBh == nullptr)
 			return Elite::BehaviorState::Failure;
 
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return Elite::BehaviorState::Failure;
 		
 
-		//HouseInfo houseInView = *pHousesInPov->begin();
-		//auto agentInfo = pInterface->Agent_GetInfo();
-		//
-		//auto targetRightTop = Elite::Vector2{ houseInView.Center.x + houseInView.Size.x /2-3,  houseInView.Center.y + houseInView.Size.y / 2 -3 };
-		//auto targetLeftBottom = Elite::Vector2{ houseInView.Center.x - houseInView.Size.x / 2,  houseInView.Center.y - houseInView.Size.y / 2 };
-		//
-		//pInterface->Draw_Circle(targetRightTop, 1, { 0,0,1 });
-		//
-		//if ((Elite::Distance(agentInfo.Position, targetRightTop) <= 1) == false && !wentRight)
-		//{
-		//	
-		//	std::cout << wentRight << '\n';
-		//	pBlackboard->ChangeData("TopRight", true);
-		//	pSteeringBh->Seek(targetRightTop);
-		//}
-		//else if ((Elite::Distance(agentInfo.Position, targetRightTop) <= 3) == false && !wentLeft && wentRight)
-		//{
-		//	pSteeringBh->Seek(targetLeftBottom);
-		//	wentLeft = true;
-		//	return Elite::BehaviorState::Success;
-		//	
-		//}
+		HouseInfo houseInView = *pHousesInPov->begin();
+		auto agentInfo = pInterface->Agent_GetInfo();
 
-		pSteeringOutput->AutoOrient = false;
-		pSteeringOutput->LinearVelocity = { 0,0 };
-		pSteeringOutput->AngularVelocity = 1.0f;
+		auto targetRightTop = Elite::Vector2{ houseInView.Center.x + houseInView.Size.x /2-3,  houseInView.Center.y + houseInView.Size.y / 2 -3 };
+		auto targetLeftBottom = Elite::Vector2{ houseInView.Center.x - houseInView.Size.x / 2 + 3,  houseInView.Center.y - houseInView.Size.y / 2 + 3 };
+		
+		pInterface->Draw_Circle(targetRightTop, 3, { 1,0,0 });
+
+		//check if went rightTop
+		if (Elite::Distance(agentInfo.Position, targetRightTop) <= 3)
+		{
+			pGlobals->wentRighttop = true;
+		}
+		else if ((Elite::Distance(agentInfo.Position, targetRightTop) >= 3) && !pGlobals->wentRighttop)
+		{
+			pSteeringBh->Seek(targetRightTop);
+		}
+		
+		if (Elite::Distance(agentInfo.Position, targetLeftBottom) <= 3)
+		{
+			pGlobals->wentLeftBottom = true;
+		}
+		else if ((Elite::Distance(agentInfo.Position, targetLeftBottom) >= 3) && !pGlobals->wentLeftBottom && pGlobals->wentRighttop)
+		{
+			pSteeringBh->Seek(targetLeftBottom);
+			pGlobals->wentLeftBottom = true;
+			
+			return Elite::BehaviorState::Success;
+		}
 		
 		
 		return Elite::BehaviorState::Failure;
@@ -330,7 +349,6 @@ namespace  BT_Actions
 }
 namespace BT_Conditions
 {
-
 	bool IsEnemyInFOV(Elite::Blackboard* pBlackboard)
 	{
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
@@ -353,21 +371,32 @@ namespace BT_Conditions
 	bool IsHouseInFOV(Elite::Blackboard* pBlackboard)
 	{
 		std::vector<HouseInfo>* pHousesInFOV{ nullptr };
+		GlobalsStruct* pGlobals{ nullptr };
 
 		if (!pBlackboard->GetData("HouseInFov", pHousesInFOV) || pHousesInFOV == nullptr)
 			return false;
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return false;
 		
-		return pHousesInFOV->size() > 0;
+		if ((pGlobals->currentHouse.Center == Elite::Vector2{ 0,0 } && pHousesInFOV->size() > 0))
+		{
+			pGlobals->currentHouse = (*pHousesInFOV)[0];
+			return true;
+		}
+		else if (pGlobals->currentHouse.Center != Elite::Vector2{ 0,0 })
+		{
+			return true;
+		}
+		return false;
 	}
 
 	bool LootInFOV(Elite::Blackboard* pBlackboard)
 	{
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
+		
 		if (!pBlackboard->GetData("EntityInFov", pEntitiesInFOV) || pEntitiesInFOV == nullptr)
-		{
 			return false;
-		}
-
+		
 		return pEntitiesInFOV->size() > 0;
 	}
 
@@ -449,6 +478,20 @@ namespace BT_Conditions
 			return true;
 ;		}
 
+		return false;
+	}
+
+	bool CheckedHouse(Elite::Blackboard* pBlackboard)
+	{
+		GlobalsStruct* pGlobals{ nullptr };
+
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return false;
+
+		if (pGlobals->wentRighttop && pGlobals->wentLeftBottom)
+		{
+			return true;
+		}
 		return false;
 	}
 }
