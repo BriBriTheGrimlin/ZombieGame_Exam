@@ -27,6 +27,13 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pMyGlobals = new GlobalsStruct();
 	m_pSteeringBehavior = new SteeringBehavior(m_pInterface, m_pSteeringOutputData);
 
+	//initialize inventory
+	m_pMyGlobals->inventorySlots["Pistol"] = 0;
+	m_pMyGlobals->inventorySlots["Shotgun"] = 1;
+	m_pMyGlobals->inventorySlots["Food"] = 2;
+	m_pMyGlobals->inventorySlots["Food2"] = 3;
+	m_pMyGlobals->inventorySlots["Medkit"] = 4;
+
 	m_pBlackboard = new Elite::Blackboard();
 	m_pBlackboard->AddData("InterFace", m_pInterface);
 	m_pBlackboard->AddData("SteeringBehavior", m_pSteeringBehavior);
@@ -40,6 +47,23 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 		new BehaviorSelector
 		(
 			{
+				//use inventory items
+				new BehaviorSequence
+				(
+					{
+						new BehaviorConditional(&BT_Conditions::HaveFood),
+						new BehaviorAction(&BT_Actions::Eat)
+					}
+				),
+
+				new BehaviorSequence
+				(
+					{
+						new BehaviorConditional(&BT_Conditions::HaveMedKit),
+						new BehaviorAction(&BT_Actions::Heal)
+					}
+				),
+
 				 new BehaviorSequence
 				 (
 				   {
@@ -66,26 +90,32 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 				 ),
 				new BehaviorSequence(
 					{
-						 new BehaviorSequence
-						 	 (
-						 		{
-						 		 new BehaviorConditional(&BT_Conditions::IsHouseInFOV),
-								// new BehaviorInvertConditional( &BT_Conditions::AgentInHouse),
-						 		 new BehaviorAction(&BT_Actions::GoInsideHouse)
-						 		}
-						 	 ),
-						 new BehaviorSequence
+						new BehaviorSequence
+							(
+						 	{
+						 	 new BehaviorConditional(&BT_Conditions::IsNewHouse),
+						 	 new BehaviorAction(&BT_Actions::GoInsideHouse)
+						 	}
+							),
+						new BehaviorSequence
 					 		 (
-					 		 	{
-					 		 		new BehaviorConditional(&BT_Conditions::AgentInHouse),
-					 		 		new BehaviorAction(&BT_Actions::CheckHouse)
-					 		 	}
+					 		 {
+					 		 	new BehaviorConditional(&BT_Conditions::InHouse),
+					 		 	new BehaviorAction(&BT_Actions::CheckHouse)
+					 		 }
 					 		 ),
+						new BehaviorSequence
+							(
+							{
+								new BehaviorConditional(&BT_Conditions::IsHouseChecked),
+								new BehaviorAction(&BT_Actions::LeaveHouse)
+							}
+							)
 					}
 				),
 			new BehaviorSequence(
 				{
-					new BehaviorInvertConditional(&BT_Conditions::IsHouseInFOV),
+					new BehaviorConditional(&BT_Conditions::NoHouseInFOV),
 					new BehaviorAction(&BT_Actions::Explore)
 				}
 				),
@@ -142,7 +172,9 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.SpawnPurgeZonesOnMiddleClick = true;
 	params.PrintDebugMessages = true;
 	params.ShowDebugItemNames = true;
-	params.Seed = 2;	//16
+	params.Seed = 37;	//16 
+	//37 has food in begin
+	//44 has medkit in begin
 }
 
 //Only Active in DEBUG Mode
@@ -215,10 +247,17 @@ void Plugin::Update(float dt)
 //This function calculates the new SteeringOutput, called once per frame
 SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 {
+	//TESTING
+	//std::cout << m_pMyGlobals->wentLeftBottom << '\n';
+
 	auto steering = SteeringPlugin_Output();
 	
 	//Use the Interface (IAssignmentInterface) to 'interface' with the AI_Framework
 	auto agentInfo = m_pInterface->Agent_GetInfo();
+
+	//std::cout << agentInfo.IsInHouse << '\n';
+
+	//m_pBlackboard->ChangeData("InterFace", m_pInterface);
 
 	*m_pHousesInFOV = GetHousesInFOV();//uses m_pInterface->Fov_GetHouseByIndex(...)
 	*m_pEntitiesInFOV = GetEntitiesInFOV(); //uses m_pInterface->Fov_GetEntityByIndex(...)
@@ -231,7 +270,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 
 	//auto nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(m_Target); //Uncomment this to use mouse position as guidance
 
-	
 	/*
 	bool seenItem{ false };
 	bool seenEnemy{ false };
@@ -249,7 +287,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 			m_pInterface->Inventory_UseItem(4);
 		}
 	}
-	
 	if (m_pInterface->Inventory_GetItem(2, item))
 	{
 		if (agentInfo.Energy <= agentInfo.Energy - 6)
@@ -266,8 +303,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 	{
 		m_CanRun = false;
 	}
-	
-
 	for (auto& e : vEntitiesInFOV)
 	{
 		if (e.Type == eEntityType::PURGEZONE)
@@ -276,7 +311,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 			m_pInterface->PurgeZone_GetInfo(e, zoneInfo);
 			//std::cout << "Purge Zone in FOV:" << e.Location.x << ", "<< e.Location.y << "---Radius: "<< zoneInfo.Radius << std::endl;
 		}
-
 		if (e.Type == eEntityType::ENEMY)
 		{
 			auto EnemyInFOV{ GetEntitiesInFOV()[0] };
@@ -290,9 +324,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 			{
 				steering.AutoOrient = false;
 				m_nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(checkpointLocation);
-
-				
-
 				auto xdifference = enemyInfo.Location.x - agentInfo.Position.x;
 				auto ydifference = enemyInfo.Location.y - agentInfo.Position.y;
 				steering.AngularVelocity = atan(ydifference / xdifference) ;
@@ -336,7 +367,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 				std::cout << "Yeet5\n";
 			}
 		}
-
 		if(e.Type == eEntityType::ITEM)
 		{
 			seenItem = true;
@@ -396,9 +426,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 			}
 		}
 	}
-		
-		
-
 	for (auto& h : vHousesInFOV)
 	{
 		auto houseInView = GetHousesInFOV()[0];
@@ -417,7 +444,6 @@ SteeringPlugin_Output Plugin::UpdateSteering(float dt)
 			}
 		}
 	}
-
 	if (GetHousesInFOV().size() == 0)
 	{
 		m_nextTargetPos = m_pInterface->NavMesh_GetClosestPathPoint(agentInfo.Position - m_pInterface->World_GetInfo().Dimensions / 2);

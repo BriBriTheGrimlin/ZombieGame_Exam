@@ -14,5 +14,6 @@
     <ClInclude Include="EBehaviorTree.h" />
     <ClInclude Include="EDecisionMaking.h" />
     <ClInclude Include="Behaviors.h" />
+    <ClInclude Include="MyGlobals.h" />
   </ItemGroup>
 </Project>

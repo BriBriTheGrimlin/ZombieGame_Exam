@@ -176,6 +176,7 @@ namespace  BT_Actions
 		SteeringBehavior* pSteeringBh{};
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
 		std::vector<HouseInfo>* pHouseInFov{ nullptr };
+		GlobalsStruct* pGlobals{ nullptr };
 
 		if (pBlackboard->GetData("InterFace", pInterface) == false || pInterface == nullptr)
 			return Elite::BehaviorState::Failure;
@@ -185,28 +186,31 @@ namespace  BT_Actions
 			return Elite::BehaviorState::Failure;
 		if (pBlackboard->GetData("HouseInFov", pHouseInFov) == false || pHouseInFov == nullptr)
 			return Elite::BehaviorState::Failure;
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return Elite::BehaviorState::Failure;
+
 
 		EntityInfo closestEnemy{};
 		closestEnemy = pEntitiesInFOV->begin()[0];
 		auto agentInfo = pInterface->Agent_GetInfo();
-		auto angleBuffer{ 0.10 };
+		auto angleBuffer{ 0.01 };
 		Elite::Vector2 desiredDirection = (closestEnemy.Location - agentInfo.Position);
 
 		if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleBuffer)
 		{
 			ItemInfo item{};
-			if (pInterface->Inventory_GetItem(0, item))
+			if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item))
 			{
-				pInterface->Inventory_UseItem(0);
+				pInterface->Inventory_UseItem(pGlobals->inventorySlots["Pistol"]);
 				if (pInterface->Weapon_GetAmmo(item) <= 0)
 				{
 					pInterface->Inventory_RemoveItem(0);
 				}
 				return Elite::BehaviorState::Success;
 			}
-			if( pInterface->Inventory_GetItem(1,item))
+			if( pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"],item))
 			{
-				pInterface->Inventory_UseItem(1);
+				pInterface->Inventory_UseItem(pGlobals->inventorySlots["Shotgun"]);
 				if (pInterface->Weapon_GetAmmo(item) <= 0)
 				{
 					pInterface->Inventory_RemoveItem(1);
@@ -243,14 +247,13 @@ namespace  BT_Actions
 		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
 			return Elite::BehaviorState::Failure;
 
-		if (pHousesInPov->empty())
+		if (pHousesInPov->empty() && pGlobals->currentHouse.Center == Elite::Vector2{0,0})
 			return Elite::BehaviorState::Failure;
 
 		Elite::Vector2 target = pGlobals->currentHouse.Center;
 
 		AgentInfo agentInfo = pInterface->Agent_GetInfo();
 
-		pInterface->Draw_SolidCircle(target, 3, { 0,0 }, { 1,1,0 });
 		if(pGlobals->wentToCenter)
 			return Elite::BehaviorState::Success;
 
@@ -260,7 +263,7 @@ namespace  BT_Actions
 		}
 		if ((Elite::Distance(agentInfo.Position, target) <= 3) && !pGlobals->wentToCenter)
 		{
-			pSteeringOutputData->LinearVelocity = Elite::Vector2{ 0,0 };
+			//pSteeringOutputData->LinearVelocity = Elite::Vector2{ 0,0 };
 			pGlobals->wentToCenter = true;
 			return Elite::BehaviorState::Success;
 		}
@@ -291,14 +294,16 @@ namespace  BT_Actions
 		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
 			return Elite::BehaviorState::Failure;
 		
+		if (pGlobals->wentLeftBottom)
+			return Elite::BehaviorState::Success;
 
-		HouseInfo houseInView = *pHousesInPov->begin();
+
+		HouseInfo houseInView = pGlobals->currentHouse;
 		auto agentInfo = pInterface->Agent_GetInfo();
 
 		auto targetRightTop = Elite::Vector2{ houseInView.Center.x + houseInView.Size.x /2-3,  houseInView.Center.y + houseInView.Size.y / 2 -3 };
 		auto targetLeftBottom = Elite::Vector2{ houseInView.Center.x - houseInView.Size.x / 2 + 3,  houseInView.Center.y - houseInView.Size.y / 2 + 3 };
-		
-		pInterface->Draw_Circle(targetRightTop, 3, { 1,0,0 });
+
 
 		//check if went rightTop
 		if (Elite::Distance(agentInfo.Position, targetRightTop) <= 3)
@@ -313,16 +318,45 @@ namespace  BT_Actions
 		if (Elite::Distance(agentInfo.Position, targetLeftBottom) <= 3)
 		{
 			pGlobals->wentLeftBottom = true;
+			return Elite::BehaviorState::Success;
 		}
 		else if ((Elite::Distance(agentInfo.Position, targetLeftBottom) >= 3) && !pGlobals->wentLeftBottom && pGlobals->wentRighttop)
 		{
 			pSteeringBh->Seek(targetLeftBottom);
-			pGlobals->wentLeftBottom = true;
 			
+		}
+	
+		return Elite::BehaviorState::Failure;
+	}
+
+	Elite::BehaviorState LeaveHouse(Elite::Blackboard* pBlackboard)
+	{
+		SteeringBehavior* pSteeringBh{ nullptr };
+		IExamInterface* pInterface{ nullptr };
+		GlobalsStruct* pGlobals{ nullptr };
+
+		if (!pBlackboard->GetData("SteeringBehavior", pSteeringBh) || pSteeringBh == nullptr)
+			return Elite::BehaviorState::Failure;
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
+			return Elite::BehaviorState::Failure;
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return Elite::BehaviorState::Failure;
+
+		
+
+		auto agentInfo = pInterface->Agent_GetInfo();
+		pSteeringBh->Seek(Elite::Vector2{ agentInfo.Position.x - 100, agentInfo.Position.y - 100 });
+
+		if (agentInfo.IsInHouse == false)
+		{
+			pGlobals->wentRighttop = false;
+			pGlobals->wentLeftBottom = false;
+			pGlobals->wentToCenter = false;
+			pGlobals->housesVisited.push_back(pGlobals->currentHouse);
+			pGlobals->currentHouse.Center = { 0,0 };
 			return Elite::BehaviorState::Success;
 		}
-		
-		
+
 		return Elite::BehaviorState::Failure;
 	}
 
@@ -330,21 +364,130 @@ namespace  BT_Actions
 	{
 		IExamInterface* pInterFace{ nullptr };
 		SteeringBehavior* pSteeringBh{ nullptr };
+		GlobalsStruct* pGlobals{ nullptr };
 
 		if (!pBlackboard->GetData("InterFace", pInterFace) || pInterFace == nullptr)
 			return Elite::BehaviorState::Failure;
 		if (pBlackboard->GetData("SteeringBehavior", pSteeringBh) == false || pSteeringBh == nullptr)
 			return Elite::BehaviorState::Failure;
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return Elite::BehaviorState::Failure;
 
 		WorldInfo worldInfo = pInterFace->World_GetInfo();
+		AgentInfo agentInfo = pInterFace->Agent_GetInfo();
 
-		Elite::Vector2 bottomLeft{ worldInfo.Center.x - worldInfo.Dimensions.x / 4, worldInfo.Center.y - worldInfo.Dimensions.y / 3 };
+		const float offset{ 4 };
+		Elite::Vector2 bottomLeft{ worldInfo.Center.x - worldInfo.Dimensions.x / offset, worldInfo.Center.y - worldInfo.Dimensions.y / offset };
+		Elite::Vector2 topLeft{ worldInfo.Center.x - worldInfo.Dimensions.x / offset, worldInfo.Center.y + worldInfo.Dimensions.y / offset };
+		Elite::Vector2 bottomRight{ worldInfo.Center.x + worldInfo.Dimensions.x / offset, worldInfo.Center.y - worldInfo.Dimensions.y / offset };
+		Elite::Vector2 topRight{ worldInfo.Center.x + worldInfo.Dimensions.x / offset, worldInfo.Center.y + worldInfo.Dimensions.y / offset };
 
-		pInterFace->Draw_Circle(bottomLeft, 5, { 1,0,0 });
+		Elite::Vector2 target{};
 
-		pSteeringBh->Seek(bottomLeft);
+		if (pGlobals->bottomLeftExplored && pGlobals->topLeftExplored &&
+			pGlobals->topRightExplored && pGlobals->bottomRightExplored)
+		{
+			std::cout << "HAS SEARCHED ALL CORNERS, reset them\n";
+			pGlobals->bottomLeftExplored = false;
+			pGlobals->topLeftExplored = false;
+			pGlobals->topRightExplored = false;
+			pGlobals->bottomRightExplored = false;
+			pGlobals->housesVisited.clear();
+		}
+		else if (pGlobals->bottomLeftExplored && pGlobals->topLeftExplored &&
+			pGlobals->topRightExplored)
+		{
+			target = bottomRight;
+		}
+		else if (pGlobals->bottomLeftExplored && pGlobals->topLeftExplored)
+		{
+			target = topRight;
+		}
+		else if (pGlobals->bottomLeftExplored)
+		{
+			target = topLeft;
+		}
+		else
+		{
+			target = bottomLeft;
+		}
+
+		const float distance{ 3 };
+		if (!pGlobals->bottomLeftExplored && Elite::Distance(agentInfo.Position, bottomLeft) <= distance)
+		{
+
+			pGlobals->bottomLeftExplored = true;
+		}
+
+		else if (!pGlobals->topLeftExplored && Elite::Distance(agentInfo.Position, topLeft) <= distance)
+		{
+			pGlobals->topLeftExplored = true;
+		}
+
+		else if (!pGlobals->bottomRightExplored && Elite::Distance(agentInfo.Position, topRight) <= distance)
+		{
+			pGlobals->topRightExplored = true;
+		}
+
+		else if (!pGlobals->topRightExplored && Elite::Distance(agentInfo.Position, bottomRight) <= distance)
+		{
+			pGlobals->bottomRightExplored = true;
+		}
+
+
+		pSteeringBh->Seek(target);
+
+		pInterFace->Draw_Circle(target, 5, { 1,0,0 });
 		
 		return Elite::BehaviorState::Failure;
+	}
+
+	Elite::BehaviorState Eat(Elite::Blackboard* pBlackboard)
+	{
+		IExamInterface* InterFace{ nullptr };
+		if (!pBlackboard->GetData("InterFace", InterFace) || InterFace == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		GlobalsStruct* pGlobals{ nullptr };
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return Elite::BehaviorState::Failure;
+
+
+		if (InterFace->Inventory_UseItem(pGlobals->inventorySlots["Food"])) // OR Food2
+		{
+			InterFace->Inventory_RemoveItem(pGlobals->inventorySlots["Food"]);
+			return Elite::BehaviorState::Success;
+		}
+		else
+		{
+			return Elite::BehaviorState::Failure;
+		}
+		
+	}
+
+	Elite::BehaviorState Heal(Elite::Blackboard* pBlackboard)
+	{
+		IExamInterface* InterFace{ nullptr };
+		if (!pBlackboard->GetData("InterFace", InterFace) || InterFace == nullptr)
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
+		GlobalsStruct* pGlobals{ nullptr };
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return Elite::BehaviorState::Failure;
+
+		if (InterFace->Inventory_UseItem(pGlobals->inventorySlots["Medkit"]))
+		{
+			InterFace->Inventory_RemoveItem(pGlobals->inventorySlots["Medkit"]);
+			return Elite::BehaviorState::Success;
+		}
+		else
+		{
+			return Elite::BehaviorState::Failure;
+		}
+
 	}
 }
 namespace BT_Conditions
@@ -368,28 +511,6 @@ namespace BT_Conditions
 		return false;
 	}
 
-	bool IsHouseInFOV(Elite::Blackboard* pBlackboard)
-	{
-		std::vector<HouseInfo>* pHousesInFOV{ nullptr };
-		GlobalsStruct* pGlobals{ nullptr };
-
-		if (!pBlackboard->GetData("HouseInFov", pHousesInFOV) || pHousesInFOV == nullptr)
-			return false;
-		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
-			return false;
-		
-		if ((pGlobals->currentHouse.Center == Elite::Vector2{ 0,0 } && pHousesInFOV->size() > 0))
-		{
-			pGlobals->currentHouse = (*pHousesInFOV)[0];
-			return true;
-		}
-		else if (pGlobals->currentHouse.Center != Elite::Vector2{ 0,0 })
-		{
-			return true;
-		}
-		return false;
-	}
-
 	bool LootInFOV(Elite::Blackboard* pBlackboard)
 	{
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
@@ -403,44 +524,66 @@ namespace BT_Conditions
 	bool HaveMedKit(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* InterFace{ nullptr };
-
 		if (!pBlackboard->GetData("InterFace", InterFace) || InterFace == nullptr)
 		{
 			return false;
 		}
 
+		GlobalsStruct* pGlobals{ nullptr };
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return false;
+
+		if (InterFace->Agent_GetInfo().Health > 8)
+			return false;
+		
 		ItemInfo item{};
-		return InterFace->Inventory_GetItem(4, item);
+		if (!InterFace->Inventory_GetItem(pGlobals->inventorySlots["Medkit"], item))
+			return false;
+
+		return true;
 	}
 
 	bool HaveFood(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* InterFace{ nullptr };
-
 		if (!pBlackboard->GetData("InterFace", InterFace) || InterFace == nullptr)
 		{
 			return false;
 		}
 
+		GlobalsStruct* pGlobals{ nullptr };
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return false;
+
+		if (InterFace->Agent_GetInfo().Energy > 5)
+			return false;
+
 		ItemInfo item{};
-		return InterFace->Inventory_GetItem(3, item);
+		if (!InterFace->Inventory_GetItem(pGlobals->inventorySlots["Food"], item))
+			return false;
+
+		return true;
 	}
 
 	bool HaveGun(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* InterFace{ nullptr };
-
 		if (!pBlackboard->GetData("InterFace", InterFace) || InterFace == nullptr)
 		{
 			return false;
 		}
 
+		GlobalsStruct* pGlobals{ nullptr };
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return false;
+
 		ItemInfo item{};
-		if (InterFace->Inventory_GetItem(0, item))
+		if (InterFace->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item)) // OR shotgun
 		{
-			return InterFace->Inventory_GetItem(0, item);
+			return InterFace->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item);
 		}
-		else return false;
+		else 
+			return false;
 	}
 
 	bool IsPurgeZoneInFOV(Elite::Blackboard* pBlackboard)
@@ -460,35 +603,83 @@ namespace BT_Conditions
 		return false;
 	}
 
-	bool returnTrue(Elite::Blackboard* pBlackboard)
+	bool NoHouseInFOV(Elite::Blackboard* pBlackboard)
 	{
-		return true;
+		GlobalsStruct* pGlobals{ nullptr };
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return false;
+
+
+		if (pGlobals->currentHouse.Center == Elite::Vector2{0,0})
+			return true;
+
+		return false;
 	}
 
-	bool AgentInHouse(Elite::Blackboard* pBlackboard)
+	bool IsNewHouse(Elite::Blackboard* pBlackboard)
+	{
+		std::vector<HouseInfo>* pHousesInFOV{ nullptr };
+		GlobalsStruct* pGlobals{ nullptr };
+
+		if (!pBlackboard->GetData("HouseInFov", pHousesInFOV) || pHousesInFOV == nullptr)
+			return false;
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return false;
+		
+		if (pGlobals->currentHouse.Center != Elite::Vector2{ 0,0 })
+		{
+			return true; //we already have a current house
+		}
+
+		if (pHousesInFOV->size() > 0)
+		{
+			//check if house has been visited
+			for (const auto &h : pGlobals->housesVisited)
+			{
+				if ((*pHousesInFOV)[0].Center == h.Center)
+					return false; //we already visited house
+			}
+		}
+
+		if ((pGlobals->currentHouse.Center == Elite::Vector2{ 0,0 } && pHousesInFOV->size() > 0))
+		{
+			pGlobals->currentHouse = (*pHousesInFOV)[0];
+			return true; //we see a house but have no current house so we make it current house
+		}
+		return false;
+	}
+
+	bool InHouse(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* interFace{ nullptr };
+		GlobalsStruct* pGlobals{ nullptr };
 
 		if (!pBlackboard->GetData("InterFace", interFace) || interFace == nullptr)
 			return false;
 
-		if(interFace->Agent_GetInfo().IsInHouse)
+		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
+			return false;
+
+		if(interFace->Agent_GetInfo().IsInHouse || pGlobals->currentHouse.Center != Elite::Vector2{ 0,0 })
 		{
-			
 			return true;
 ;		}
 
 		return false;
 	}
 
-	bool CheckedHouse(Elite::Blackboard* pBlackboard)
+	bool IsHouseChecked(Elite::Blackboard* pBlackboard)
 	{
+		IExamInterface* interFace{ nullptr };
 		GlobalsStruct* pGlobals{ nullptr };
+
+		if (!pBlackboard->GetData("InterFace", interFace) || interFace == nullptr)
+			return false;
 
 		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
 			return false;
 
-		if (pGlobals->wentRighttop && pGlobals->wentLeftBottom)
+		if (pGlobals->wentLeftBottom)
 		{
 			return true;
 		}
