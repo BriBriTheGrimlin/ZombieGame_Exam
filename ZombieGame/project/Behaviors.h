@@ -238,11 +238,11 @@ namespace  BT_Actions
 		}
 		else
 		{
-			
-			return Elite::BehaviorState::Failure;
-		}
+			return Elite::BehaviorState::Success;
 
-		return Elite::BehaviorState::Success;
+		}
+		return Elite::BehaviorState::Failure;
+	
 	}
 
 	Elite::BehaviorState GoInsideHouse(Elite::Blackboard* pBlackboard)
