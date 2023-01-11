@@ -55,7 +55,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 				   }
 				 ),
 				//EnemyCheck														
-				new BehaviorSequence //was selector
+				new BehaviorSequence
 				(
 					{
 						 new BehaviorConditional(&BT_Conditions::IsEnemyInFOV),

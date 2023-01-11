@@ -207,7 +207,7 @@ namespace  BT_Actions
 
 		if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleBufferGun)
 		{
-			if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item)) //|| pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))
+			if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item))
 			{
 
 				pInterface->Inventory_UseItem(pGlobals->inventorySlots["Pistol"]);
@@ -228,7 +228,7 @@ namespace  BT_Actions
 			}
 			else
 			{
-				pSteeringBh->Face(closestEnemy.Location);
+				pSteeringBh->Flee(closestEnemy.Location);
 				return Elite::BehaviorState::Success;
 			}
 		}
@@ -395,18 +395,16 @@ namespace  BT_Actions
 
 		Elite::Vector2 target{};
 
-		
-
 		if (pGlobals->bottomLeftExplored && pGlobals->topLeftExplored &&
 			pGlobals->topRightExplored && pGlobals->bottomRightExplored)
 		{
 			Elite::BehaviorState::Success;
 			std::cout << "HAS SEARCHED ALL CORNERS, reset them\n";
+			pGlobals->housesVisited.clear();
 			pGlobals->bottomLeftExplored = false;
 			pGlobals->topLeftExplored = false;
 			pGlobals->topRightExplored = false;
 			pGlobals->bottomRightExplored = false;
-			pGlobals->housesVisited.clear();
 		}
 		else if (pGlobals->bottomLeftExplored && pGlobals->topLeftExplored &&
 			pGlobals->topRightExplored)
