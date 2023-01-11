@@ -54,42 +54,43 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 						 new BehaviorAction(&BT_Actions::ChangeToFlee)
 				   }
 				 ),
-				 new BehaviorSequence
-				 (
-				   {
-						 //EnemyCheck														
+				//EnemyCheck														
+				new BehaviorSequence //was selector
+				(
+					{
 						 new BehaviorConditional(&BT_Conditions::IsEnemyInFOV),
-						 new BehaviorSequence //was selector
+						 new BehaviorSequence
 						 (
-							{
-							 new BehaviorConditional(&BT_Conditions::HaveGun),
-							 new BehaviorAction(&BT_Actions::ShootZombieOrRun)
-							}
-						 ),
-				   }
-				 ),
+							 {
+								new BehaviorConditional(&BT_Conditions::HaveGun),
+								new BehaviorAction(&BT_Actions::ShootZombieOrRun)
+							 }
+						 )
+						
+					}
+				),
 				new BehaviorSequence(
 					{
 						new BehaviorSequence
 							(
-						 	{
-						 	 new BehaviorConditional(&BT_Conditions::IsNewHouse),
-						 	 new BehaviorAction(&BT_Actions::GoInsideHouse)
-						 	}
+						 		{
+						 		 new BehaviorConditional(&BT_Conditions::IsNewHouse),
+						 		 new BehaviorAction(&BT_Actions::GoInsideHouse)
+						 		}
 							),
 						new BehaviorSequence
 					 		 (
-					 		 {
-					 		 	new BehaviorConditional(&BT_Conditions::InHouse),
-					 		 	new BehaviorAction(&BT_Actions::CheckHouse)
-					 		 }
+					 			{
+					 				new BehaviorConditional(&BT_Conditions::InHouse),
+					 				new BehaviorAction(&BT_Actions::CheckHouse)
+					 			}
 					 		 ),
 						new BehaviorSequence
 							(
-							{
-								new BehaviorConditional(&BT_Conditions::IsHouseChecked),
-								new BehaviorAction(&BT_Actions::LeaveHouse)
-							}
+								{
+									new BehaviorConditional(&BT_Conditions::IsHouseChecked),
+									new BehaviorAction(&BT_Actions::LeaveHouse)
+								}
 							)
 					}
 				),
@@ -110,26 +111,18 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 			new BehaviorSequence(
 					{
 						new BehaviorConditional(&BT_Conditions::NoHouseInFOV),
+						new BehaviorInvertConditional(&BT_Conditions::IsEnemyInFOV),
 						new BehaviorAction(&BT_Actions::Explore)
 					}
 				),
-			 new BehaviorSequence
-							 (
-							 	{
-							 		new BehaviorConditional(&BT_Conditions::LootInFOV),
-							 		new BehaviorAction(&BT_Actions::LootFOV)
-							 	}
-							 ),
-					
-
-
-
-
-
-
-
+			 new BehaviorSequence(
+				{
+					new BehaviorConditional(&BT_Conditions::LootInFOV),
+					new BehaviorAction(&BT_Actions::LootFOV)
+				}
+				),
 			}
-		)
+			)
 
 		);
 					

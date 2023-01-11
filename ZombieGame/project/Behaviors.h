@@ -226,33 +226,12 @@ namespace  BT_Actions
 				}
 				return Elite::BehaviorState::Success;
 			}
-			else
-			{
-				pSteeringBh->FaceAndFlee(closestEnemy.Location);
-				return Elite::BehaviorState::Failure;
-			}
+			//else
+			//{
+			//	pSteeringBh->Face(closestEnemy.Location);
+			//	return Elite::BehaviorState::Success;
+			//}
 		}
-		else
-		{
-			pSteeringBh->Face(closestEnemy.Location);
-			return Elite::BehaviorState::Success;
-		}
-		//else if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleBufferShotgun)
-		//{
-		//	if (agentInfo.Position.Distance(closestEnemy.Location) <= agentInfo.FOV_Range / 3)
-		//	{
-		//		if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))
-		//		{
-		//			pInterface->Inventory_UseItem(pGlobals->inventorySlots["Shotgun"]);
-		//			if (pInterface->Weapon_GetAmmo(item) <= 0)
-		//			{
-		//				pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Shotgun"]);
-		//			}
-		//			return Elite::BehaviorState::Success;
-		//		}
-		//	}
-		//}
-		
 
 		return Elite::BehaviorState::Failure;
 	}
@@ -421,6 +400,7 @@ namespace  BT_Actions
 		if (pGlobals->bottomLeftExplored && pGlobals->topLeftExplored &&
 			pGlobals->topRightExplored && pGlobals->bottomRightExplored)
 		{
+			Elite::BehaviorState::Success;
 			std::cout << "HAS SEARCHED ALL CORNERS, reset them\n";
 			pGlobals->bottomLeftExplored = false;
 			pGlobals->topLeftExplored = false;
@@ -451,7 +431,6 @@ namespace  BT_Actions
 		const float distance{ 3 };
 		if (!pGlobals->bottomLeftExplored && Elite::Distance(agentInfo.Position, bottomLeft) <= distance)
 		{
-
 			pGlobals->bottomLeftExplored = true;
 		}
 
@@ -605,7 +584,6 @@ namespace BT_Conditions
 		IExamInterface* pInterface{ nullptr };
 		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 			return false;
-
 		GlobalsStruct* pGlobals{ nullptr };
 		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
 			return false;
@@ -613,14 +591,6 @@ namespace BT_Conditions
 		ItemInfo item{};
 		if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item) || (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))) // OR shotgun
 		{
-			//if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item))
-			//{
-			//	return pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item);
-			//}
-			//if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))
-			//{
-			//	return pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item);
-			//}
 			return true;
 		}
 		else 
