@@ -47,39 +47,19 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 		new BehaviorSelector
 		(
 			{
-				//use inventory items
-				new BehaviorSequence
-				(
-					{
-						new BehaviorConditional(&BT_Conditions::HaveFood),
-						new BehaviorAction(&BT_Actions::Eat)
-					}
-				),
-
-				new BehaviorSequence
-				(
-					{
-						new BehaviorConditional(&BT_Conditions::HaveMedKit),
-						new BehaviorAction(&BT_Actions::Heal)
-					}
-				),
-
 				 new BehaviorSequence
 				 (
-				   {
-						 // Is PurgeZone in Fov													
-						 new BehaviorConditional(&BT_Conditions::IsPurgeZoneInFOV),
-						 // Run from Purgezone													
+				   {	//Purgezone									
+						 new BehaviorConditional(&BT_Conditions::IsPurgeZoneInFOV),												
 						 new BehaviorAction(&BT_Actions::ChangeToFlee)
 				   }
 				 ),
 				 new BehaviorSequence
 				 (
 				   {
-						 //Is Enemy in Fov														
+						 //EnemyCheck														
 						 new BehaviorConditional(&BT_Conditions::IsEnemyInFOV),
-
-						 new BehaviorSelector
+						 new BehaviorSequence //was selector
 						 (
 							{
 							 new BehaviorConditional(&BT_Conditions::HaveGun),
@@ -113,11 +93,25 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 							)
 					}
 				),
+			//use inventory items
+				new BehaviorSequence(
+					 {
+						new BehaviorConditional(&BT_Conditions::HaveFood),
+						new BehaviorAction(&BT_Actions::Eat)
+					 }
+				),
+
+				new BehaviorSequence(
+					 {
+						new BehaviorConditional(&BT_Conditions::HaveMedKit),
+						new BehaviorAction(&BT_Actions::Heal)
+					 }
+				),
 			new BehaviorSequence(
-				{
-					new BehaviorConditional(&BT_Conditions::NoHouseInFOV),
-					new BehaviorAction(&BT_Actions::Explore)
-				}
+					{
+						new BehaviorConditional(&BT_Conditions::NoHouseInFOV),
+						new BehaviorAction(&BT_Actions::Explore)
+					}
 				),
 			 new BehaviorSequence
 							 (
@@ -172,7 +166,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.SpawnPurgeZonesOnMiddleClick = true;
 	params.PrintDebugMessages = true;
 	params.ShowDebugItemNames = true;
-	params.Seed = 37;	//16 
+	params.Seed = 3;	//16 
 	//37 has food in begin
 	//44 has medkit in begin
 }

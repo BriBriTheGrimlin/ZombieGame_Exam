@@ -66,6 +66,7 @@ namespace  BT_Actions
 		IExamInterface* pInterface{ nullptr };
 		SteeringBehavior* pSteeringBh{};
 		std::vector<EntityInfo>* pEntitiesInFOV{ nullptr };
+		SteeringPlugin_Output* pSteeringOutputData{ nullptr };
 
 		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 			return Elite::BehaviorState::Failure;
@@ -74,6 +75,9 @@ namespace  BT_Actions
 			return Elite::BehaviorState::Failure;
 
 		if (!pBlackboard->GetData("EntityInFov", pEntitiesInFOV) || pEntitiesInFOV == nullptr)
+			return Elite::BehaviorState::Failure;
+
+		if (!pBlackboard->GetData("SteeringOutput", pSteeringOutputData) || pSteeringOutputData == nullptr)
 			return Elite::BehaviorState::Failure;
 
 		if (pEntitiesInFOV->empty())
@@ -86,6 +90,7 @@ namespace  BT_Actions
 
 		for (const auto& entity : *pEntitiesInFOV)
 		{
+			pSteeringOutputData->AutoOrient = true;
 				pSteeringBh->Seek(pEntitiesInFOV->begin()->Location);
 					ItemInfo item{};
 					pInterface->Item_GetInfo(entity, item);
@@ -193,37 +198,61 @@ namespace  BT_Actions
 		EntityInfo closestEnemy{};
 		closestEnemy = pEntitiesInFOV->begin()[0];
 		auto agentInfo = pInterface->Agent_GetInfo();
-		auto angleBuffer{ 0.01 };
+		auto angleBufferShotgun{ 0.3 };
+		auto angleBufferGun{ 0.1 };
 		Elite::Vector2 desiredDirection = (closestEnemy.Location - agentInfo.Position);
+		ItemInfo item{};
 
-		if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleBuffer)
+		pSteeringBh->Face(closestEnemy.Location);
+
+		if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleBufferGun)
 		{
-			ItemInfo item{};
-			if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item))
+			if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item)) //|| pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))
 			{
+
 				pInterface->Inventory_UseItem(pGlobals->inventorySlots["Pistol"]);
 				if (pInterface->Weapon_GetAmmo(item) <= 0)
 				{
-					pInterface->Inventory_RemoveItem(0);
+					pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Pistol"]);
 				}
 				return Elite::BehaviorState::Success;
 			}
-			if( pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"],item))
+			else if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))
 			{
 				pInterface->Inventory_UseItem(pGlobals->inventorySlots["Shotgun"]);
 				if (pInterface->Weapon_GetAmmo(item) <= 0)
 				{
-					pInterface->Inventory_RemoveItem(1);
+					pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Shotgun"]);
 				}
 				return Elite::BehaviorState::Success;
 			}
-			
+			else
+			{
+				pSteeringBh->FaceAndFlee(closestEnemy.Location);
+				return Elite::BehaviorState::Failure;
+			}
 		}
 		else
 		{
-			pSteeringBh->Flee(closestEnemy.Location, 15);
+			pSteeringBh->Face(closestEnemy.Location);
 			return Elite::BehaviorState::Success;
 		}
+		//else if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleBufferShotgun)
+		//{
+		//	if (agentInfo.Position.Distance(closestEnemy.Location) <= agentInfo.FOV_Range / 3)
+		//	{
+		//		if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))
+		//		{
+		//			pInterface->Inventory_UseItem(pGlobals->inventorySlots["Shotgun"]);
+		//			if (pInterface->Weapon_GetAmmo(item) <= 0)
+		//			{
+		//				pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Shotgun"]);
+		//			}
+		//			return Elite::BehaviorState::Success;
+		//		}
+		//	}
+		//}
+		
 
 		return Elite::BehaviorState::Failure;
 	}
@@ -362,19 +391,22 @@ namespace  BT_Actions
 
 	Elite::BehaviorState Explore(Elite::Blackboard* pBlackboard)
 	{
-		IExamInterface* pInterFace{ nullptr };
+		IExamInterface* pInterface{ nullptr };
 		SteeringBehavior* pSteeringBh{ nullptr };
+		SteeringPlugin_Output* pSteeringOutput{ nullptr };
 		GlobalsStruct* pGlobals{ nullptr };
 
-		if (!pBlackboard->GetData("InterFace", pInterFace) || pInterFace == nullptr)
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 			return Elite::BehaviorState::Failure;
 		if (pBlackboard->GetData("SteeringBehavior", pSteeringBh) == false || pSteeringBh == nullptr)
+			return Elite::BehaviorState::Failure;
+		if (pBlackboard->GetData("SteeringOutput", pSteeringOutput) == false || pSteeringOutput == nullptr)
 			return Elite::BehaviorState::Failure;
 		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
 			return Elite::BehaviorState::Failure;
 
-		WorldInfo worldInfo = pInterFace->World_GetInfo();
-		AgentInfo agentInfo = pInterFace->Agent_GetInfo();
+		WorldInfo worldInfo = pInterface->World_GetInfo();
+		AgentInfo agentInfo = pInterface->Agent_GetInfo();
 
 		const float offset{ 4 };
 		Elite::Vector2 bottomLeft{ worldInfo.Center.x - worldInfo.Dimensions.x / offset, worldInfo.Center.y - worldInfo.Dimensions.y / offset };
@@ -383,6 +415,8 @@ namespace  BT_Actions
 		Elite::Vector2 topRight{ worldInfo.Center.x + worldInfo.Dimensions.x / offset, worldInfo.Center.y + worldInfo.Dimensions.y / offset };
 
 		Elite::Vector2 target{};
+
+		
 
 		if (pGlobals->bottomLeftExplored && pGlobals->topLeftExplored &&
 			pGlobals->topRightExplored && pGlobals->bottomRightExplored)
@@ -412,6 +446,8 @@ namespace  BT_Actions
 			target = bottomLeft;
 		}
 
+		
+
 		const float distance{ 3 };
 		if (!pGlobals->bottomLeftExplored && Elite::Distance(agentInfo.Position, bottomLeft) <= distance)
 		{
@@ -434,18 +470,17 @@ namespace  BT_Actions
 			pGlobals->bottomRightExplored = true;
 		}
 
+		pSteeringBh->SeekWhileSpinning(target);
 
-		pSteeringBh->Seek(target);
-
-		pInterFace->Draw_Circle(target, 5, { 1,0,0 });
+		pInterface->Draw_Circle(target, 5, { 1,0,0 });
 		
 		return Elite::BehaviorState::Failure;
 	}
 
 	Elite::BehaviorState Eat(Elite::Blackboard* pBlackboard)
 	{
-		IExamInterface* InterFace{ nullptr };
-		if (!pBlackboard->GetData("InterFace", InterFace) || InterFace == nullptr)
+		IExamInterface* pInterface{ nullptr };
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
@@ -454,9 +489,9 @@ namespace  BT_Actions
 			return Elite::BehaviorState::Failure;
 
 
-		if (InterFace->Inventory_UseItem(pGlobals->inventorySlots["Food"])) // OR Food2
+		if (pInterface->Inventory_UseItem(pGlobals->inventorySlots["Food"])) // OR Food2
 		{
-			InterFace->Inventory_RemoveItem(pGlobals->inventorySlots["Food"]);
+			pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Food"]);
 			return Elite::BehaviorState::Success;
 		}
 		else
@@ -468,8 +503,8 @@ namespace  BT_Actions
 
 	Elite::BehaviorState Heal(Elite::Blackboard* pBlackboard)
 	{
-		IExamInterface* InterFace{ nullptr };
-		if (!pBlackboard->GetData("InterFace", InterFace) || InterFace == nullptr)
+		IExamInterface* pInterface{ nullptr };
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 		{
 			return Elite::BehaviorState::Failure;
 		}
@@ -478,9 +513,9 @@ namespace  BT_Actions
 		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
 			return Elite::BehaviorState::Failure;
 
-		if (InterFace->Inventory_UseItem(pGlobals->inventorySlots["Medkit"]))
+		if (pInterface->Inventory_UseItem(pGlobals->inventorySlots["Medkit"]))
 		{
-			InterFace->Inventory_RemoveItem(pGlobals->inventorySlots["Medkit"]);
+			pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Medkit"]);
 			return Elite::BehaviorState::Success;
 		}
 		else
@@ -523,8 +558,8 @@ namespace BT_Conditions
 
 	bool HaveMedKit(Elite::Blackboard* pBlackboard)
 	{
-		IExamInterface* InterFace{ nullptr };
-		if (!pBlackboard->GetData("InterFace", InterFace) || InterFace == nullptr)
+		IExamInterface* pInterface{ nullptr };
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 		{
 			return false;
 		}
@@ -533,11 +568,11 @@ namespace BT_Conditions
 		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
 			return false;
 
-		if (InterFace->Agent_GetInfo().Health > 8)
+		if (pInterface->Agent_GetInfo().Health > 8)
 			return false;
 		
 		ItemInfo item{};
-		if (!InterFace->Inventory_GetItem(pGlobals->inventorySlots["Medkit"], item))
+		if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Medkit"], item))
 			return false;
 
 		return true;
@@ -545,8 +580,8 @@ namespace BT_Conditions
 
 	bool HaveFood(Elite::Blackboard* pBlackboard)
 	{
-		IExamInterface* InterFace{ nullptr };
-		if (!pBlackboard->GetData("InterFace", InterFace) || InterFace == nullptr)
+		IExamInterface* pInterface{ nullptr };
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 		{
 			return false;
 		}
@@ -555,11 +590,11 @@ namespace BT_Conditions
 		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
 			return false;
 
-		if (InterFace->Agent_GetInfo().Energy > 5)
+		if (pInterface->Agent_GetInfo().Energy > 5)
 			return false;
 
 		ItemInfo item{};
-		if (!InterFace->Inventory_GetItem(pGlobals->inventorySlots["Food"], item))
+		if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Food"], item))
 			return false;
 
 		return true;
@@ -567,20 +602,26 @@ namespace BT_Conditions
 
 	bool HaveGun(Elite::Blackboard* pBlackboard)
 	{
-		IExamInterface* InterFace{ nullptr };
-		if (!pBlackboard->GetData("InterFace", InterFace) || InterFace == nullptr)
-		{
+		IExamInterface* pInterface{ nullptr };
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 			return false;
-		}
 
 		GlobalsStruct* pGlobals{ nullptr };
 		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
 			return false;
 
 		ItemInfo item{};
-		if (InterFace->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item)) // OR shotgun
+		if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item) || (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))) // OR shotgun
 		{
-			return InterFace->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item);
+			//if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item))
+			//{
+			//	return pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item);
+			//}
+			//if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))
+			//{
+			//	return pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item);
+			//}
+			return true;
 		}
 		else 
 			return false;
@@ -651,16 +692,16 @@ namespace BT_Conditions
 
 	bool InHouse(Elite::Blackboard* pBlackboard)
 	{
-		IExamInterface* interFace{ nullptr };
+		IExamInterface* pInterface{ nullptr };
 		GlobalsStruct* pGlobals{ nullptr };
 
-		if (!pBlackboard->GetData("InterFace", interFace) || interFace == nullptr)
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 			return false;
 
 		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
 			return false;
 
-		if(interFace->Agent_GetInfo().IsInHouse || pGlobals->currentHouse.Center != Elite::Vector2{ 0,0 })
+		if(pInterface->Agent_GetInfo().IsInHouse || pGlobals->currentHouse.Center != Elite::Vector2{ 0,0 })
 		{
 			return true;
 ;		}
@@ -670,10 +711,10 @@ namespace BT_Conditions
 
 	bool IsHouseChecked(Elite::Blackboard* pBlackboard)
 	{
-		IExamInterface* interFace{ nullptr };
+		IExamInterface* pInterface{ nullptr };
 		GlobalsStruct* pGlobals{ nullptr };
 
-		if (!pBlackboard->GetData("InterFace", interFace) || interFace == nullptr)
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
 			return false;
 
 		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
