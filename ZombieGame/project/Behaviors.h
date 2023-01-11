@@ -200,20 +200,19 @@ namespace  BT_Actions
 		EntityInfo closestEnemy{};
 		closestEnemy = pEntitiesInFOV->begin()[0];
 		auto agentInfo = pInterface->Agent_GetInfo();
-		auto angleBufferShotgun{ 0.01 };
+		auto angleBufferShotgun{ 0.1 };
 		auto angleBufferGun{ 0.1 };
 		Elite::Vector2 desiredDirection = (closestEnemy.Location - agentInfo.Position);
 		ItemInfo item{};
 
-		if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item) || (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item)))
+		pSteeringBh->FaceAndFlee(closestEnemy.Location);
+
+		if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleBufferGun)
 		{
-			pSteeringBh->FaceAndFlee(closestEnemy.Location);
-
-			if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleBufferGun)
+			if (agentInfo.Position.Distance(closestEnemy.Location) <= agentInfo.FOV_Range / 2)
 			{
-				if (agentInfo.Position.Distance(closestEnemy.Location) >= agentInfo.FOV_Range / 2)
+				if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item))
 				{
-
 					pInterface->Inventory_UseItem(pGlobals->inventorySlots["Pistol"]);
 					if (pInterface->Weapon_GetAmmo(item) <= 0)
 					{
@@ -221,26 +220,25 @@ namespace  BT_Actions
 						return Elite::BehaviorState::Success;
 					}
 				}
-				else if (agentInfo.Position.Distance(closestEnemy.Location) <= agentInfo.FOV_Range / 2)
+			}
+			else if (agentInfo.Position.Distance(closestEnemy.Location) >= agentInfo.FOV_Range / 2)
+			{
+				if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))
 				{
 					pInterface->Inventory_UseItem(pGlobals->inventorySlots["Shotgun"]);
 					if (pInterface->Weapon_GetAmmo(item) <= 0)
 					{
 						pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Shotgun"]);
 						return Elite::BehaviorState::Success;
+						
 					}
 				}
-				else
-				{
-					pSteeringBh->FaceAndFlee(closestEnemy.Location);
-					return Elite::BehaviorState::Success;
-				}
 			}
-
 			
 		}
 		else
 		{
+			
 			return Elite::BehaviorState::Failure;
 		}
 
