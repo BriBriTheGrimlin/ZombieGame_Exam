@@ -226,11 +226,11 @@ namespace  BT_Actions
 				}
 				return Elite::BehaviorState::Success;
 			}
-			//else
-			//{
-			//	pSteeringBh->Face(closestEnemy.Location);
-			//	return Elite::BehaviorState::Success;
-			//}
+			else
+			{
+				pSteeringBh->Face(closestEnemy.Location);
+				return Elite::BehaviorState::Success;
+			}
 		}
 
 		return Elite::BehaviorState::Failure;
