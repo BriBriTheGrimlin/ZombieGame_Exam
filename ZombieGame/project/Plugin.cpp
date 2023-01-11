@@ -28,8 +28,8 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 	m_pSteeringBehavior = new SteeringBehavior(m_pInterface, m_pSteeringOutputData);
 
 	//initialize inventory
-	m_pMyGlobals->inventorySlots["Pistol"] = 0;
-	m_pMyGlobals->inventorySlots["Shotgun"] = 1;
+	m_pMyGlobals->inventorySlots["Shotgun"] = 0;
+	m_pMyGlobals->inventorySlots["Pistol"] = 1;
 	m_pMyGlobals->inventorySlots["Food"] = 2;
 	m_pMyGlobals->inventorySlots["Food2"] = 3;
 	m_pMyGlobals->inventorySlots["Medkit"] = 4;
@@ -95,18 +95,18 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 					}
 				),
 			//use inventory items
-				new BehaviorSequence(
-					 {
+			new BehaviorSequence(
+					{
 						new BehaviorConditional(&BT_Conditions::HaveFood),
 						new BehaviorAction(&BT_Actions::Eat)
-					 }
+					}
 				),
 
-				new BehaviorSequence(
-					 {
+			new BehaviorSequence(
+					{
 						new BehaviorConditional(&BT_Conditions::HaveMedKit),
 						new BehaviorAction(&BT_Actions::Heal)
-					 }
+					}
 				),
 			new BehaviorSequence(
 					{
@@ -116,10 +116,10 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 					}
 				),
 			 new BehaviorSequence(
-				{
+					{
 					new BehaviorConditional(&BT_Conditions::LootInFOV),
 					new BehaviorAction(&BT_Actions::LootFOV)
-				}
+					}
 				),
 			}
 			)
@@ -159,7 +159,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.SpawnPurgeZonesOnMiddleClick = true;
 	params.PrintDebugMessages = true;
 	params.ShowDebugItemNames = true;
-	params.Seed = 3;	//16 
+	params.Seed = 46;	//16 
 	//37 has food in begin
 	//44 has medkit in begin
 }

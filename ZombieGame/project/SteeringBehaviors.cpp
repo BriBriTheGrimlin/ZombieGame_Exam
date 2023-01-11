@@ -40,7 +40,7 @@ void SteeringBehavior::Face(const Elite::Vector2 target) const
 {
 	auto agentInfo = m_pInterface->Agent_GetInfo();
 	m_pSteeringBh->AutoOrient = false;
-
+	
 	Elite::Vector2 toTarget = (target - agentInfo.Position);
 	toTarget.Normalize();
 	const float agentRot{ agentInfo.Orientation + 0.9f * float(M_PI) };
