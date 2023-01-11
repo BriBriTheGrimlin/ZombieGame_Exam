@@ -94,14 +94,14 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 							)
 					}
 				),
-			//use inventory items
+			////use inventory items
 			new BehaviorSequence(
 					{
 						new BehaviorConditional(&BT_Conditions::HaveFood),
 						new BehaviorAction(&BT_Actions::Eat)
 					}
 				),
-
+			
 			new BehaviorSequence(
 					{
 						new BehaviorConditional(&BT_Conditions::HaveMedKit),
@@ -159,7 +159,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.SpawnPurgeZonesOnMiddleClick = true;
 	params.PrintDebugMessages = true;
 	params.ShowDebugItemNames = true;
-	params.Seed = 46;	//16 
+	params.Seed = 2;	//16 
 	//37 has food in begin
 	//44 has medkit in begin
 }

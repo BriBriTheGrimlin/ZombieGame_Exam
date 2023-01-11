@@ -59,8 +59,8 @@ void SteeringBehavior::SeekWhileSpinning(const Elite::Vector2 target) const
 
 void SteeringBehavior::FaceAndFlee(const Elite::Vector2 target) const
 {
-
 	//FACE
+	std::cout << "joink" << '\n';
 	m_pSteeringBh->AutoOrient = false;
 	Elite::Vector2 toTarget = (target - m_pInterface->Agent_GetInfo().Position);
 	toTarget.Normalize();
@@ -72,6 +72,6 @@ void SteeringBehavior::FaceAndFlee(const Elite::Vector2 target) const
 	//FLEE
 	m_pSteeringBh->LinearVelocity = target - m_pInterface->Agent_GetInfo().Position;
 	m_pSteeringBh->LinearVelocity.Normalize();
-	m_pSteeringBh->LinearVelocity *= -m_pInterface->Agent_GetInfo().MaxLinearSpeed / 2; //only use half speed so we dont lose the enemy
+	m_pSteeringBh->LinearVelocity *= -m_pInterface->Agent_GetInfo().MaxLinearSpeed;
 
 }

@@ -85,9 +85,7 @@ namespace  BT_Actions
 			return Elite::BehaviorState::Failure;
 
 		if (pEntitiesInFOV->empty())
-		{
 			return Elite::BehaviorState::Failure;
-		}
 
 		const auto agentInfo = pInterface->Agent_GetInfo();
 
@@ -95,81 +93,81 @@ namespace  BT_Actions
 		for (const auto& entity : *pEntitiesInFOV)
 		{
 			pSteeringOutputData->AutoOrient = true;
-				pSteeringBh->Seek(pEntitiesInFOV->begin()->Location);
-					ItemInfo item{};
-					pInterface->Item_GetInfo(entity, item);
+			pSteeringBh->Seek(pEntitiesInFOV->begin()->Location);
+			ItemInfo item{};
+			pInterface->Item_GetInfo(entity, item);
 
 					//pSteeringBh->Seek(item.Location);
 
-					if (agentInfo.Position.Distance(item.Location) <= agentInfo.GrabRange)
+			if (agentInfo.Position.Distance(item.Location) <= agentInfo.GrabRange)
+			{
+				if (item.Type == eItemType::SHOTGUN)
+				{
+					if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))
 					{
-						if (item.Type == eItemType::SHOTGUN)
-						{
-							if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))
-							{
-								pInterface->Item_Grab(entity, item);
-								pInterface->Inventory_AddItem(pGlobals->inventorySlots["Shotgun"], item);
-								return Elite::BehaviorState::Success;
-							}
-							else
-							{
-								pInterface->Item_Destroy(entity);
-							}
-							
-						}
-						if (item.Type == eItemType::PISTOL)
-						{
-							if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item))
-							{
-								pInterface->Item_Grab(entity, item);
-								pInterface->Inventory_AddItem(pGlobals->inventorySlots["Pistol"], item);
-								return Elite::BehaviorState::Success;
-							}
-							else
-							{
-								pInterface->Item_Destroy(entity);
-							}
-						}
-						if (item.Type == eItemType::FOOD)
-						{
-							if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Food"], item))
-							{
-								pInterface->Item_Grab(entity, item);
-								pInterface->Inventory_AddItem(pGlobals->inventorySlots["Food"], item);
-								return Elite::BehaviorState::Success;
-							}
-							else if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Food"], item))
-							{
-								pInterface->Item_Grab(entity, item);
-								pInterface->Inventory_AddItem(pGlobals->inventorySlots["Food2"], item);
-								return Elite::BehaviorState::Success;
-							}
-							else
-							{
-								pInterface->Item_Destroy(entity);
-								return Elite::BehaviorState::Running;
-							}
-						}
-						if (item.Type == eItemType::MEDKIT)
-						{
-							if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Medkit"], item))
-							{
-								pInterface->Item_Grab(entity, item);
-								pInterface->Inventory_AddItem(pGlobals->inventorySlots["Medkit"], item);
-								return Elite::BehaviorState::Success;
-							}
-							else
-							{
-								pInterface->Item_Destroy(entity);
-								return Elite::BehaviorState::Success;
-							}
-						}
-						if (item.Type == eItemType::GARBAGE)
-						{
-							pInterface->Item_Destroy(entity);
-							return Elite::BehaviorState::Success;
-						}
+						pInterface->Item_Grab(entity, item);
+						pInterface->Inventory_AddItem(pGlobals->inventorySlots["Shotgun"], item);
+						return Elite::BehaviorState::Success;
 					}
+					else
+					{
+						pInterface->Item_Destroy(entity);
+					}
+					
+				}
+				if (item.Type == eItemType::PISTOL)
+				{
+					if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item))
+					{
+						pInterface->Item_Grab(entity, item);
+						pInterface->Inventory_AddItem(pGlobals->inventorySlots["Pistol"], item);
+						return Elite::BehaviorState::Success;
+					}
+					else
+					{
+						pInterface->Item_Destroy(entity);
+					}
+				}
+				if (item.Type == eItemType::FOOD)
+				{
+					if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Food"], item))
+					{
+						pInterface->Item_Grab(entity, item);
+						pInterface->Inventory_AddItem(pGlobals->inventorySlots["Food"], item);
+						return Elite::BehaviorState::Success;
+					}
+					else if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Food"], item))
+					{
+						pInterface->Item_Grab(entity, item);
+						pInterface->Inventory_AddItem(pGlobals->inventorySlots["Food2"], item);
+						return Elite::BehaviorState::Success;
+					}
+					else
+					{
+						pInterface->Item_Destroy(entity);
+						return Elite::BehaviorState::Running;
+					}
+				}
+				if (item.Type == eItemType::MEDKIT)
+				{
+					if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Medkit"], item))
+					{
+						pInterface->Item_Grab(entity, item);
+						pInterface->Inventory_AddItem(pGlobals->inventorySlots["Medkit"], item);
+						return Elite::BehaviorState::Success;
+					}
+					else
+					{
+						pInterface->Item_Destroy(entity);
+						return Elite::BehaviorState::Success;
+					}
+				}
+				if (item.Type == eItemType::GARBAGE)
+				{
+					pInterface->Item_Destroy(entity);
+					return Elite::BehaviorState::Success;
+				}
+			}
 			if(pEntitiesInFOV->empty())
 			{
 				return Elite::BehaviorState::Failure;
@@ -207,45 +205,45 @@ namespace  BT_Actions
 		Elite::Vector2 desiredDirection = (closestEnemy.Location - agentInfo.Position);
 		ItemInfo item{};
 
-		pSteeringBh->Face(closestEnemy.Location);
+		pSteeringBh->FaceAndFlee(closestEnemy.Location);
 
 		if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleBufferGun)
 		{
-			if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item))
+			if (agentInfo.Position.Distance(closestEnemy.Location) <= agentInfo.FOV_Range / 2)
 			{
-
-				pInterface->Inventory_UseItem(pGlobals->inventorySlots["Pistol"]);
-				if (pInterface->Weapon_GetAmmo(item) <= 0)
+				if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item))
 				{
-					pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Pistol"]);
-					return Elite::BehaviorState::Success;
+					pInterface->Inventory_UseItem(pGlobals->inventorySlots["Pistol"]);
+					if (pInterface->Weapon_GetAmmo(item) <= 0)
+					{
+						pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Pistol"]);
+						return Elite::BehaviorState::Success;
+					}
 				}
-				else
-				{
-					pSteeringBh->Flee(closestEnemy.Location, 15);
-					return Elite::BehaviorState::Success;
-				}
-				
 			}
-			else if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))
+			else if (agentInfo.Position.Distance(closestEnemy.Location) >= agentInfo.FOV_Range / 2)
 			{
-				pInterface->Inventory_UseItem(pGlobals->inventorySlots["Shotgun"]);
-				if (pInterface->Weapon_GetAmmo(item) <= 0)
+				if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))
 				{
-					return Elite::BehaviorState::Success;
-					pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Shotgun"]);
+					pInterface->Inventory_UseItem(pGlobals->inventorySlots["Shotgun"]);
+					if (pInterface->Weapon_GetAmmo(item) <= 0)
+					{
+						pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Shotgun"]);
+						return Elite::BehaviorState::Success;
+						
+					}
 				}
-				else
-				{
-					pSteeringBh->Flee(closestEnemy.Location, 15);
-					return Elite::BehaviorState::Success;
-				}
-				
 			}
 			
 		}
+		else
+		{
+			pSteeringBh->FaceAndFlee(closestEnemy.Location);
+			//pSteeringBh->Flee(closestEnemy.Location);
+			return Elite::BehaviorState::Success;
+		}
 
-		return Elite::BehaviorState::Failure;
+		return Elite::BehaviorState::Success;
 	}
 
 	Elite::BehaviorState GoInsideHouse(Elite::Blackboard* pBlackboard)
@@ -410,7 +408,7 @@ namespace  BT_Actions
 		if (pGlobals->bottomLeftExplored && pGlobals->topLeftExplored &&
 			pGlobals->topRightExplored && pGlobals->bottomRightExplored)
 		{
-			Elite::BehaviorState::Success;
+			//Elite::BehaviorState::Success;
 			std::cout << "HAS SEARCHED ALL CORNERS, reset them\n";
 			pGlobals->housesVisited.clear();
 			pGlobals->bottomLeftExplored = false;
@@ -449,12 +447,12 @@ namespace  BT_Actions
 			pGlobals->topLeftExplored = true;
 		}
 
-		else if (!pGlobals->topRightExplored && Elite::Distance(agentInfo.Position, bottomRight) <= distance)
+		else if (!pGlobals->bottomRightExplored && Elite::Distance(agentInfo.Position, bottomRight) <= distance)
 		{
 			pGlobals->bottomRightExplored = true;
 		}
 
-		else if (!pGlobals->bottomRightExplored && Elite::Distance(agentInfo.Position, topRight) <= distance)
+		else if (!pGlobals->topRightExplored && Elite::Distance(agentInfo.Position, topRight) <= distance)
 		{
 			pGlobals->topRightExplored = true;
 		}
@@ -477,15 +475,18 @@ namespace  BT_Actions
 		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
 			return Elite::BehaviorState::Failure;
 
-
-		if (pInterface->Inventory_UseItem(pGlobals->inventorySlots["Food"])) // OR Food2
+		ItemInfo item{};
+		if (!pInterface->Inventory_UseItem(pGlobals->inventorySlots["Food2"]))
 		{
+			pInterface->Inventory_UseItem(pGlobals->inventorySlots["Food"]);
 			pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Food"]);
 			return Elite::BehaviorState::Success;
 		}
 		else
 		{
-			return Elite::BehaviorState::Failure;
+			pInterface->Inventory_UseItem(pGlobals->inventorySlots["Food2"]);
+			pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Food2"]);
+			return Elite::BehaviorState::Success;
 		}
 		
 	}
@@ -570,23 +571,21 @@ namespace BT_Conditions
 	bool HaveFood(Elite::Blackboard* pBlackboard)
 	{
 		IExamInterface* pInterface{ nullptr };
-		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
-		{
-			return false;
-		}
-
 		GlobalsStruct* pGlobals{ nullptr };
+
+		if (!pBlackboard->GetData("InterFace", pInterface) || pInterface == nullptr)
+			return false;
 		if (!pBlackboard->GetData("Globals", pGlobals) || pGlobals == nullptr)
 			return false;
 
-		if (pInterface->Agent_GetInfo().Energy > 5)
+		if (pInterface->Agent_GetInfo().Energy > 4)
 			return false;
 
 		ItemInfo item{};
-		if (!pInterface->Inventory_GetItem(pGlobals->inventorySlots["Food"], item))
-			return false;
+		if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Food"], item) || pInterface->Inventory_GetItem(pGlobals->inventorySlots["Food2"], item))
+			return true;
 
-		return true;
+		return false;
 	}
 
 	bool HaveGun(Elite::Blackboard* pBlackboard)
