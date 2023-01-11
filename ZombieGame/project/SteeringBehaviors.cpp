@@ -60,7 +60,6 @@ void SteeringBehavior::SeekWhileSpinning(const Elite::Vector2 target) const
 void SteeringBehavior::FaceAndFlee(const Elite::Vector2 target) const
 {
 	//FACE
-	std::cout << "joink" << '\n';
 	m_pSteeringBh->AutoOrient = false;
 	Elite::Vector2 toTarget = (target - m_pInterface->Agent_GetInfo().Position);
 	toTarget.Normalize();

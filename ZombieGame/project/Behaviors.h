@@ -205,14 +205,53 @@ namespace  BT_Actions
 		Elite::Vector2 desiredDirection = (closestEnemy.Location - agentInfo.Position);
 		ItemInfo item{};
 
-		pSteeringBh->FaceAndFlee(closestEnemy.Location);
+		//pSteeringBh->FaceAndFlee(closestEnemy.Location);
 
-		if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleBufferGun)
+		//if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleBufferGun)
+		//{
+		//	if (agentInfo.Position.Distance(closestEnemy.Location) <= agentInfo.FOV_Range / 2)
+		//	{
+		//		if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item))
+		//		{
+		//			pInterface->Inventory_UseItem(pGlobals->inventorySlots["Pistol"]);
+		//			if (pInterface->Weapon_GetAmmo(item) <= 0)
+		//			{
+		//				pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Pistol"]);
+		//				return Elite::BehaviorState::Success;
+		//			}
+		//		}
+		//	}
+		//	else if (agentInfo.Position.Distance(closestEnemy.Location) >= agentInfo.FOV_Range / 2)
+		//	{
+		//		if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))
+		//		{
+		//			pInterface->Inventory_UseItem(pGlobals->inventorySlots["Shotgun"]);
+		//			if (pInterface->Weapon_GetAmmo(item) <= 0)
+		//			{
+		//				pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Shotgun"]);
+		//				return Elite::BehaviorState::Success;
+		//				
+		//			}
+		//		}
+		//	}
+		//	
+		//}
+		//else
+		//{
+		//	pSteeringBh->FaceAndFlee(closestEnemy.Location);
+		//	//pSteeringBh->Flee(closestEnemy.Location);
+		//	return Elite::BehaviorState::Success;
+		//}
+
+		if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item) || (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item)))
 		{
-			if (agentInfo.Position.Distance(closestEnemy.Location) <= agentInfo.FOV_Range / 2)
+			pSteeringBh->FaceAndFlee(closestEnemy.Location);
+
+			if (std::abs(agentInfo.Orientation - std::atan2(desiredDirection.y, desiredDirection.x)) < angleBufferGun)
 			{
-				if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Pistol"], item))
+				if (agentInfo.Position.Distance(closestEnemy.Location) >= agentInfo.FOV_Range / 2)
 				{
+
 					pInterface->Inventory_UseItem(pGlobals->inventorySlots["Pistol"]);
 					if (pInterface->Weapon_GetAmmo(item) <= 0)
 					{
@@ -220,27 +259,27 @@ namespace  BT_Actions
 						return Elite::BehaviorState::Success;
 					}
 				}
-			}
-			else if (agentInfo.Position.Distance(closestEnemy.Location) >= agentInfo.FOV_Range / 2)
-			{
-				if (pInterface->Inventory_GetItem(pGlobals->inventorySlots["Shotgun"], item))
+				else if (agentInfo.Position.Distance(closestEnemy.Location) <= agentInfo.FOV_Range / 2)
 				{
 					pInterface->Inventory_UseItem(pGlobals->inventorySlots["Shotgun"]);
 					if (pInterface->Weapon_GetAmmo(item) <= 0)
 					{
 						pInterface->Inventory_RemoveItem(pGlobals->inventorySlots["Shotgun"]);
 						return Elite::BehaviorState::Success;
-						
 					}
 				}
+				else
+				{
+					pSteeringBh->FaceAndFlee(closestEnemy.Location);
+					return Elite::BehaviorState::Success;
+				}
 			}
+
 			
 		}
 		else
 		{
-			pSteeringBh->FaceAndFlee(closestEnemy.Location);
-			//pSteeringBh->Flee(closestEnemy.Location);
-			return Elite::BehaviorState::Success;
+			return Elite::BehaviorState::Failure;
 		}
 
 		return Elite::BehaviorState::Success;
@@ -402,11 +441,12 @@ namespace  BT_Actions
 		Elite::Vector2 topLeft{ worldInfo.Center.x - worldInfo.Dimensions.x / offset, worldInfo.Center.y + worldInfo.Dimensions.y / offset };
 		Elite::Vector2 bottomRight{ worldInfo.Center.x + worldInfo.Dimensions.x / offset, worldInfo.Center.y - worldInfo.Dimensions.y / offset };
 		Elite::Vector2 topRight{ worldInfo.Center.x + worldInfo.Dimensions.x / offset, worldInfo.Center.y + worldInfo.Dimensions.y / offset };
+		Elite::Vector2 center{ worldInfo.Center };
 
 		Elite::Vector2 target{};
 
 		if (pGlobals->bottomLeftExplored && pGlobals->topLeftExplored &&
-			pGlobals->topRightExplored && pGlobals->bottomRightExplored)
+			pGlobals->topRightExplored && pGlobals->bottomRightExplored && pGlobals->CenterExplored)
 		{
 			//Elite::BehaviorState::Success;
 			std::cout << "HAS SEARCHED ALL CORNERS, reset them\n";
@@ -415,6 +455,12 @@ namespace  BT_Actions
 			pGlobals->topLeftExplored = false;
 			pGlobals->topRightExplored = false;
 			pGlobals->bottomRightExplored = false;
+			pGlobals->CenterExplored = false;
+		}
+		else if (pGlobals->bottomRightExplored && pGlobals->bottomLeftExplored
+			&& pGlobals->topLeftExplored && pGlobals->topRightExplored)
+		{
+			target = center;
 		}
 		else if (pGlobals->bottomLeftExplored && pGlobals->topLeftExplored &&
 			pGlobals->topRightExplored)
@@ -447,14 +493,19 @@ namespace  BT_Actions
 			pGlobals->topLeftExplored = true;
 		}
 
+		else if (!pGlobals->topRightExplored && Elite::Distance(agentInfo.Position, topRight) <= distance)
+		{
+			pGlobals->topRightExplored = true;
+		}
+
 		else if (!pGlobals->bottomRightExplored && Elite::Distance(agentInfo.Position, bottomRight) <= distance)
 		{
 			pGlobals->bottomRightExplored = true;
 		}
 
-		else if (!pGlobals->topRightExplored && Elite::Distance(agentInfo.Position, topRight) <= distance)
+		else if(!pGlobals->CenterExplored && agentInfo.Position.Distance(center) <= distance && pGlobals->bottomRightExplored  )
 		{
-			pGlobals->topRightExplored = true;
+			pGlobals->CenterExplored = true;
 		}
 
 		

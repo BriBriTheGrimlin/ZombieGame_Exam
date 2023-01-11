@@ -71,6 +71,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 				),
 				new BehaviorSequence(
 					{
+						//new house
 						new BehaviorSequence
 							(
 						 		{
@@ -78,6 +79,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 						 		 new BehaviorAction(&BT_Actions::GoInsideHouse)
 						 		}
 							),
+						//if new check house
 						new BehaviorSequence
 					 		 (
 					 			{
@@ -85,6 +87,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 					 				new BehaviorAction(&BT_Actions::CheckHouse)
 					 			}
 					 		 ),
+						//if checked leave house
 						new BehaviorSequence
 							(
 								{
@@ -94,7 +97,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 							)
 					}
 				),
-			////use inventory items
+			//use inventory items
 			new BehaviorSequence(
 					{
 						new BehaviorConditional(&BT_Conditions::HaveFood),
@@ -108,6 +111,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 						new BehaviorAction(&BT_Actions::Heal)
 					}
 				),
+			//Explore
 			new BehaviorSequence(
 					{
 						new BehaviorConditional(&BT_Conditions::NoHouseInFOV),
@@ -115,6 +119,7 @@ void Plugin::Initialize(IBaseInterface* pInterface, PluginInfo& info)
 						new BehaviorAction(&BT_Actions::Explore)
 					}
 				),
+			//Loot FOV
 			 new BehaviorSequence(
 					{
 					new BehaviorConditional(&BT_Conditions::LootInFOV),
@@ -159,7 +164,7 @@ void Plugin::InitGameDebugParams(GameDebugParams& params)
 	params.SpawnPurgeZonesOnMiddleClick = true;
 	params.PrintDebugMessages = true;
 	params.ShowDebugItemNames = true;
-	params.Seed = 2;	//16 
+	params.Seed = 8;	//16 
 	//37 has food in begin
 	//44 has medkit in begin
 }

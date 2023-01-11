@@ -16,6 +16,7 @@ struct GlobalsStruct
 	bool topLeftExplored{ false };
 	bool topRightExplored{ false };
 	bool bottomRightExplored{ false };
+	bool CenterExplored{ false };
 
 	//Inventory
 	std::map<std::string, int> inventorySlots;
